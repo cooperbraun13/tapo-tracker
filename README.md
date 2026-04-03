@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tapo Tracker
 
-## Getting Started
+A web app for tracking UFC Tapology pick'em results and money wagered across events. Built for a small friend group to replace a spreadsheet.
 
-First, run the development server:
+## How It Works
+
+Everyone puts in $5 per event. The player with the highest Tapology score wins the pot. Ties split the winnings evenly. Money is auto-calculated from scores — you just enter the points.
+
+## Features
+
+- **Leaderboard** — Rankings by total money with medals, gold highlight for #1, and animated rank changes
+- **Events** — Add UFC cards, enter Tapology points per player, and money calculates automatically. Expand any event to view details or edit scores.
+- **Upcoming Cards** — Vote on which future cards the group will bet on. Cards show consensus status (Locked In / Not Enough / Waiting). Locked-in cards can be promoted to Events after the date passes.
+- **Manage** — Add/remove players and reset all data
+
+## Tech Stack
+
+- Next.js + React + TypeScript
+- Tailwind CSS
+- Framer Motion (animations)
+- localStorage for persistence
+
+## Running Locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Other Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build    # production build
+npm run lint     # lint check
+```
 
-## Learn More
+## Deploying
 
-To learn more about Next.js, take a look at the following resources:
+Deploy to [Vercel](https://vercel.com) — just connect the repo and it works out of the box.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Note: Data is stored in localStorage (per-browser, per-device). There is no shared backend.
