@@ -100,29 +100,6 @@ export default function EventCard({
           </span>
           <span className="text-text-muted text-sm">{formatDate(event.date)}</span>
         </div>
-        {!expanded && (
-          <div className="flex gap-3 text-sm">
-            {event.scores.map((s) => {
-              const m = money.get(s.playerId) ?? 0;
-              const isWinner = s.points === maxPoints && m > 0;
-              return (
-                <span key={s.playerId} className="flex items-center gap-1.5">
-                  <span className={`text-text-muted ${isWinner ? "text-gold" : ""}`}>
-                    {playerName(s.playerId)}
-                  </span>
-                  <span className="text-text-muted">{s.points}pts</span>
-                  <span
-                    className={
-                      m > 0 ? "text-green" : m < 0 ? "text-red" : "text-text-muted"
-                    }
-                  >
-                    {formatMoney(m)}
-                  </span>
-                </span>
-              );
-            })}
-          </div>
-        )}
         <span className="text-text-muted text-xs ml-2">
           {expanded ? "▲" : "▼"}
         </span>
