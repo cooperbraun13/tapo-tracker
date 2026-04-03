@@ -15,10 +15,11 @@ A web app for a small group of friends (4 people) to track UFC Tapology pick'em 
 - **Ties**: If two or more players tie for the highest Tapology score, they split the pot evenly (remaining players still lose $5 each).
 - **Derived stats**: Total money (primary ranking metric), event wins, number of events participated in. Tapology points are tracked per-event for context but are NOT shown on the leaderboard.
 
-### Two main views, equally important
+### Three main views
 
 1. **Leaderboard** — Overall standings ranked by total money. Show rank, name, total money (+/- colored), event wins, and events played. The leader should feel visually distinct. Tapology points do NOT appear here — money is what matters.
 2. **Event History** — Chronological list of all UFC events with each player's scores. Tap/click an event to expand and see or edit scores. Most recent events on top.
+3. **Upcoming** — A list of future UFC cards where players vote on whether they want to bet. See "Upcoming Cards" section below for full details.
 
 ### Data management
 
@@ -55,9 +56,23 @@ interface UFCEvent {
   scores: EventScore[];
 }
 
+interface UpcomingCard {
+  id: string;
+  name: string; // e.g. "UFC 320"
+  date: string; // ISO date string
+  votes: PlayerVote[];
+  promoted: boolean; // true once it's been sent to Events
+}
+
+interface PlayerVote {
+  playerId: string;
+  vote: "in" | "out" | null; // null = hasn't voted yet
+}
+
 interface AppData {
   players: Player[];
   events: UFCEvent[];
+  upcoming: UpcomingCard[];
 }
 ```
 
@@ -127,6 +142,36 @@ This is where the app should have personality. Use Framer Motion (or CSS transit
 - **Adding an event**: Button at top of event list. Form with event name, date picker, and a Tapology points input per player. Pre-populate player rows automatically. Only field to fill in is points — money is computed on save.
 - **Empty states**: Helpful messages pointing users to the right tab when no players or events exist yet.
 
+### Upcoming Cards (voting tab)
+
+This is where the group decides which UFC cards to bet on before the event happens.
+
+**How it works:**
+
+- You (the admin) add an upcoming UFC card by name and date.
+- Each card shows a row per player with a simple toggle: ✓ (I'm in) or ✗ (I'm out). Default state is undecided (no vote yet).
+- The card displays a clear consensus status:
+  - **"LOCKED IN"** — 3-1 or 4-0 (majority or unanimous). Visually distinct (gold border or accent). This means the group is betting on this card.
+  - **"NOT ENOUGH"** — 2-2 or worse. Muted/dimmed styling. The group is skipping this one.
+  - **"WAITING"** — not everyone has voted yet. Show who still needs to decide.
+
+**Promoting to Events:**
+
+- When a card is "LOCKED IN" and the event date has passed, show a button to promote it to the Events tab. This creates a new event pre-filled with the card name, date, and only the players who voted ✓ as participants.
+- Alternatively, just use this tab as a visual indicator for you to manually add the event — either approach works, but the promote button is cleaner.
+
+**UX details:**
+
+- Upcoming cards sorted by date ascending (nearest event first).
+- Past cards that were never promoted should auto-archive or dim out so they don't clutter the view.
+- Keep it dead simple — this is a quick yes/no poll, not a discussion thread.
+
+**Design:**
+
+- Same dark aesthetic as the rest of the app.
+- ✓ votes get a subtle green tint, ✗ gets a subtle red tint, undecided is neutral/muted.
+- The "LOCKED IN" state should feel decisive — maybe a solid left border in gold or a badge.
+
 ## File Structure
 
 ```
@@ -135,6 +180,7 @@ src/
     Leaderboard.tsx
     EventList.tsx
     EventCard.tsx
+    UpcomingCards.tsx
     PlayerManager.tsx
     Layout.tsx
   hooks/
@@ -181,3 +227,7 @@ When verifying the build works:
 6. Edit an event's points and confirm money and leaderboard recalculate
 7. Delete a player and confirm their scores are cleaned up from all events
 8. Refresh the page and confirm data persists
+9. Add an upcoming card — confirm all players show as undecided
+10. Vote 3 players "in" and 1 "out" — confirm status shows "LOCKED IN"
+11. Vote 2 "in" and 2 "out" — confirm status shows "NOT ENOUGH"
+12. Promote a locked-in card to Events — confirm it creates an event with only the "in" players
