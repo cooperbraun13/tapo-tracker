@@ -11,16 +11,27 @@ Everyone puts in $5 per event. The player with the highest Tapology score wins t
 - **Leaderboard** — Rankings by total money with medals, gold highlight for #1, and animated rank changes
 - **Events** — Add UFC cards, enter Tapology points per player, and money calculates automatically. Expand any event to view details or edit scores.
 - **Upcoming Cards** — Vote on which future cards the group will bet on. Cards show consensus status (Locked In / Not Enough / Waiting). Locked-in cards can be promoted to Events after the date passes.
-- **Manage** — Add/remove players and reset all data
+- **Manage** — Add/remove players
 
 ## Tech Stack
 
 - Next.js + React + TypeScript
 - Tailwind CSS
 - Framer Motion (animations)
-- localStorage for persistence
+- Supabase (persistence — shared across all devices)
 
-## Running Locally
+## Setup
+
+### 1. Supabase
+
+Create a [Supabase](https://supabase.com) project and run the schema SQL from `CLAUDE.md` in the SQL editor. Then create a `.env.local` file:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+### 2. Run locally
 
 ```bash
 npm install
@@ -38,6 +49,4 @@ npm run lint     # lint check
 
 ## Deploying
 
-Deploy to [Vercel](https://vercel.com) — just connect the repo and it works out of the box.
-
-Note: Data is stored in localStorage (per-browser, per-device). There is no shared backend.
+Deploy to [Vercel](https://vercel.com) — connect the repo and add the two Supabase environment variables in your Vercel project settings.
