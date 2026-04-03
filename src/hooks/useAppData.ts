@@ -1,34 +1,38 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AppData, Player, UFCEvent, EventScore, UpcomingCard, PlayerVote } from "@/lib/types";
-import { loadData, saveData } from "@/lib/storage";
+import { AppData, EventScore } from "@/lib/types";
+import * as storage from "@/lib/storage";
 
-const DEFAULT_DATA: AppData = { players: [], events: [], upcoming: [] };
+const EMPTY: AppData = { players: [], events: [], upcoming: [] };
 
 export function useAppData() {
-  const [data, setData] = useState<AppData>(DEFAULT_DATA);
+  const [data, setData] = useState<AppData>(EMPTY);
   const [loaded, setLoaded] = useState(false);
 
-  // Load from storage on mount
+  // Load all data from Supabase on mount
   useEffect(() => {
-    setData(loadData());
-    setLoaded(true);
+    async function load() {
+      const [players, events, upcoming] = await Promise.all([
+        storage.getPlayers(),
+        storage.getEvents(),
+        storage.getUpcomingCards(),
+      ]);
+      setData({ players, events, upcoming });
+      setLoaded(true);
+    }
+    load();
   }, []);
-
-  // Persist whenever data changes (skip initial default)
-  useEffect(() => {
-    if (loaded) saveData(data);
-  }, [data, loaded]);
 
   // --- Player mutations ---
 
-  const addPlayer = useCallback((name: string) => {
-    const player: Player = { id: crypto.randomUUID(), name };
+  const addPlayer = useCallback(async (name: string) => {
+    const player = await storage.addPlayer(name);
     setData((prev) => ({ ...prev, players: [...prev.players, player] }));
   }, []);
 
-  const removePlayer = useCallback((playerId: string) => {
+  const removePlayer = useCallback(async (playerId: string) => {
+    await storage.removePlayer(playerId);
     setData((prev) => ({
       ...prev,
       players: prev.players.filter((p) => p.id !== playerId),
@@ -46,15 +50,16 @@ export function useAppData() {
   // --- Event mutations ---
 
   const addEvent = useCallback(
-    (name: string, date: string, scores: EventScore[]) => {
-      const event: UFCEvent = { id: crypto.randomUUID(), name, date, scores };
+    async (name: string, date: string, scores: EventScore[]) => {
+      const event = await storage.addEvent(name, date, scores);
       setData((prev) => ({ ...prev, events: [...prev.events, event] }));
     },
     []
   );
 
   const updateEventScores = useCallback(
-    (eventId: string, scores: EventScore[]) => {
+    async (eventId: string, scores: EventScore[]) => {
+      await storage.updateEventScores(eventId, scores);
       setData((prev) => ({
         ...prev,
         events: prev.events.map((e) =>
@@ -65,7 +70,8 @@ export function useAppData() {
     []
   );
 
-  const deleteEvent = useCallback((eventId: string) => {
+  const deleteEvent = useCallback(async (eventId: string) => {
+    await storage.deleteEvent(eventId);
     setData((prev) => ({
       ...prev,
       events: prev.events.filter((e) => e.id !== eventId),
@@ -75,27 +81,17 @@ export function useAppData() {
   // --- Upcoming card mutations ---
 
   const addUpcomingCard = useCallback(
-    (name: string, date: string) => {
-      setData((prev) => {
-        const votes: PlayerVote[] = prev.players.map((p) => ({
-          playerId: p.id,
-          vote: null,
-        }));
-        const card: UpcomingCard = {
-          id: crypto.randomUUID(),
-          name,
-          date,
-          votes,
-          promoted: false,
-        };
-        return { ...prev, upcoming: [...prev.upcoming, card] };
-      });
+    async (name: string, date: string) => {
+      const playerIds = data.players.map((p) => p.id);
+      const card = await storage.addUpcomingCard(name, date, playerIds);
+      setData((prev) => ({ ...prev, upcoming: [...prev.upcoming, card] }));
     },
-    []
+    [data.players]
   );
 
   const setVote = useCallback(
-    (cardId: string, playerId: string, vote: "in" | "out" | null) => {
+    async (cardId: string, playerId: string, vote: "in" | "out" | null) => {
+      await storage.setVote(cardId, playerId, vote);
       setData((prev) => ({
         ...prev,
         upcoming: prev.upcoming.map((c) =>
@@ -113,34 +109,19 @@ export function useAppData() {
     []
   );
 
-  const promoteCard = useCallback((cardId: string) => {
-    setData((prev) => {
-      const card = prev.upcoming.find((c) => c.id === cardId);
-      if (!card) return prev;
-      const inPlayers = card.votes
-        .filter((v) => v.vote === "in")
-        .map((v) => v.playerId);
-      const scores: EventScore[] = inPlayers.map((pid) => ({
-        playerId: pid,
-        points: 0,
-      }));
-      const event: UFCEvent = {
-        id: crypto.randomUUID(),
-        name: card.name,
-        date: card.date,
-        scores,
-      };
-      return {
-        ...prev,
-        events: [...prev.events, event],
-        upcoming: prev.upcoming.map((c) =>
-          c.id === cardId ? { ...c, promoted: true } : c
-        ),
-      };
-    });
+  const promoteCard = useCallback(async (cardId: string) => {
+    const event = await storage.promoteCard(cardId);
+    setData((prev) => ({
+      ...prev,
+      events: [...prev.events, event],
+      upcoming: prev.upcoming.map((c) =>
+        c.id === cardId ? { ...c, promoted: true } : c
+      ),
+    }));
   }, []);
 
-  const deleteUpcomingCard = useCallback((cardId: string) => {
+  const deleteUpcomingCard = useCallback(async (cardId: string) => {
+    await storage.deleteUpcomingCard(cardId);
     setData((prev) => ({
       ...prev,
       upcoming: prev.upcoming.filter((c) => c.id !== cardId),
@@ -149,7 +130,8 @@ export function useAppData() {
 
   // --- Reset ---
 
-  const resetData = useCallback(() => {
+  const resetData = useCallback(async () => {
+    await storage.resetAllData();
     setData({ players: [], events: [], upcoming: [] });
   }, []);
 
