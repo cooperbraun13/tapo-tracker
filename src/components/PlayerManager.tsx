@@ -8,32 +8,20 @@ interface PlayerManagerProps {
   players: Player[];
   onAddPlayer: (name: string) => void;
   onRemovePlayer: (id: string) => void;
-  onReset: () => void;
 }
 
 export default function PlayerManager({
   players,
   onAddPlayer,
   onRemovePlayer,
-  onReset,
 }: PlayerManagerProps) {
   const [name, setName] = useState("");
-  const [confirmReset, setConfirmReset] = useState(false);
 
   const handleAdd = () => {
     const trimmed = name.trim();
     if (!trimmed) return;
     onAddPlayer(trimmed);
     setName("");
-  };
-
-  const handleReset = () => {
-    if (!confirmReset) {
-      setConfirmReset(true);
-      return;
-    }
-    onReset();
-    setConfirmReset(false);
   };
 
   return (
@@ -87,23 +75,6 @@ export default function PlayerManager({
             </p>
           )}
         </div>
-      </section>
-
-      <section className="border-t border-border pt-6">
-        <h2 className="font-heading text-lg font-bold uppercase tracking-wider mb-4">
-          Data
-        </h2>
-        <button
-          onClick={handleReset}
-          onBlur={() => setConfirmReset(false)}
-          className={`px-4 py-2 border font-heading font-semibold uppercase text-sm tracking-wider transition-colors duration-150 ${
-            confirmReset
-              ? "border-red text-red bg-red/10 hover:bg-red/20"
-              : "border-border text-text-muted hover:text-red hover:border-red/50"
-          }`}
-        >
-          {confirmReset ? "Confirm Reset — All Data Will Be Erased" : "Reset All Data"}
-        </button>
       </section>
     </div>
   );

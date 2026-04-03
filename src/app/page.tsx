@@ -20,7 +20,6 @@ export default function Home() {
     setVote,
     promoteCard,
     deleteUpcomingCard,
-    resetData,
   } = useAppData();
 
   if (!loaded) return null;
@@ -34,7 +33,6 @@ export default function Home() {
               players={data.players}
               onAddPlayer={addPlayer}
               onRemovePlayer={removePlayer}
-              onReset={resetData}
             />
           );
         }
