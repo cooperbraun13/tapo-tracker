@@ -33,7 +33,8 @@ A web app for a small group of friends (4 people) to track UFC Tapology pick'em 
 - **React** (Next.js preferably so we can deploy on Vercel)
 - **TypeScript**
 - **Tailwind CSS** for styling
-- **Persistence**: Start with localStorage. Structure the data so it could migrate to Supabase or a simple JSON API later without a rewrite. Keep all storage access behind a single module/hook (e.g. `useStorage` or `storage.ts`) so swapping backends is a one-file change.
+- **Supabase** for persistence (free tier). All 4 friends share the same data in real time. See "Supabase Setup" section below for schema and implementation details.
+- **`@supabase/supabase-js`** client library
 
 ## Data Model
 
@@ -184,9 +185,10 @@ src/
     PlayerManager.tsx
     Layout.tsx
   hooks/
-    useAppData.ts      # all data loading/saving/mutations
+    useAppData.ts      # all data loading/saving/mutations — calls into storage.ts
   lib/
-    storage.ts         # localStorage wrapper, single swap point
+    supabase.ts        # Supabase client init (reads env vars)
+    storage.ts         # all Supabase queries — single swap point if backend changes
     scoring.ts         # derived stat calculations (totals, rankings, wins)
     types.ts           # TypeScript interfaces
   App.tsx
@@ -197,14 +199,128 @@ src/
 
 - All derived stats (totals, rankings, who won each event) should be computed, not stored. Only store raw scores.
 - Generate IDs with `crypto.randomUUID()` or a simple timestamp+random approach.
-- The storage module should expose: `loadData(): AppData`, `saveData(data: AppData)`, and nothing else. Components use the `useAppData` hook which wraps these.
+- **All Supabase queries live in `storage.ts`** — no Supabase imports anywhere else. The `useAppData` hook wraps storage calls and manages React state. If we ever swap backends, only `storage.ts` changes.
 - When editing scores for an event, don't save on every keystroke. Use local component state and save on explicit "Save" action.
 - Handle edge cases: tied Tapology scores for an event (split the pot evenly among winners), all players tie (nobody wins or loses money that event), player with no scores for an event (skip them in calculations, show dash in UI), events where not all players participated (only participating players are in the pot).
 
+## Supabase Setup
+
+### Environment Variables
+
+Add these to `.env.local` (and to Vercel environment settings for production):
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+### Supabase Client (`lib/supabase.ts`)
+
+```typescript
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+```
+
+### Database Schema (run this SQL in the Supabase SQL editor)
+
+```sql
+-- Players
+create table players (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  created_at timestamptz default now()
+);
+
+-- UFC Events
+create table events (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  date date not null,
+  created_at timestamptz default now()
+);
+
+-- Scores (one row per player per event)
+create table event_scores (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid references events(id) on delete cascade not null,
+  player_id uuid references players(id) on delete cascade not null,
+  points integer not null default 0,
+  unique(event_id, player_id)
+);
+
+-- Upcoming cards for voting
+create table upcoming_cards (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  date date not null,
+  promoted boolean default false,
+  created_at timestamptz default now()
+);
+
+-- Votes on upcoming cards
+create table upcoming_votes (
+  id uuid primary key default gen_random_uuid(),
+  card_id uuid references upcoming_cards(id) on delete cascade not null,
+  player_id uuid references players(id) on delete cascade not null,
+  vote text check (vote in ('in', 'out')) default null,
+  unique(card_id, player_id)
+);
+
+-- Enable Row Level Security but allow all access (no auth, friend group only)
+alter table players enable row level security;
+alter table events enable row level security;
+alter table event_scores enable row level security;
+alter table upcoming_cards enable row level security;
+alter table upcoming_votes enable row level security;
+
+create policy "Allow all" on players for all using (true) with check (true);
+create policy "Allow all" on events for all using (true) with check (true);
+create policy "Allow all" on event_scores for all using (true) with check (true);
+create policy "Allow all" on upcoming_cards for all using (true) with check (true);
+create policy "Allow all" on upcoming_votes for all using (true) with check (true);
+```
+
+### Storage Module (`lib/storage.ts`)
+
+This module is the **only file that imports Supabase**. It should expose functions like:
+
+```typescript
+// Players
+getPlayers(): Promise<Player[]>
+addPlayer(name: string): Promise<Player>
+removePlayer(id: string): Promise<void>
+
+// Events
+getEvents(): Promise<UFCEvent[]>           // includes scores joined in
+addEvent(name: string, date: string, scores: { playerId: string; points: number }[]): Promise<UFCEvent>
+updateEventScores(eventId: string, scores: { playerId: string; points: number }[]): Promise<void>
+deleteEvent(id: string): Promise<void>
+
+// Upcoming Cards
+getUpcomingCards(): Promise<UpcomingCard[]>  // includes votes joined in
+addUpcomingCard(name: string, date: string): Promise<UpcomingCard>
+setVote(cardId: string, playerId: string, vote: 'in' | 'out' | null): Promise<void>
+promoteCard(cardId: string): Promise<UFCEvent>  // creates event from card
+deleteUpcomingCard(id: string): Promise<void>
+```
+
+### Important Supabase Notes
+
+- **No auth**: This is a friend group tool. RLS policies allow all access via the anon key. Don't expose any sensitive data.
+- **Scores are relational**: `event_scores` is a join table. When fetching events, join scores in the same query rather than making N+1 requests.
+- **Votes are relational**: Same pattern — `upcoming_votes` is a join table on `upcoming_cards`.
+- **Money is still computed client-side** from scores. Never store money in the database.
+- **When promoting a card**: create the event + scores in a single operation, then set `promoted = true` on the card. Only include players who voted 'in'.
+- **Deleting a player**: cascade deletes handle cleaning up their scores and votes automatically (set up in the foreign keys above).
+
 ## What NOT to Build (Keep It Simple)
 
-- No auth or user accounts — this is for a small friend group
-- No real-time sync between devices (localStorage is fine for now)
+- No auth or user accounts — this is for a small friend group, everyone shares the same data via Supabase
+- **No "Reset All Data" button** — data lives in a shared database now. A reset wipes everyone's data with no undo. Remove any existing reset functionality from the Manage tab. Players can still be individually removed.
 - No individual fight-by-fight picks — just the Tapology total per event
 - No charts or graphs in v1 (can add later)
 - No import from spreadsheet (we'll enter past data manually if we want)
@@ -219,14 +335,14 @@ src/
 
 When verifying the build works:
 
-1. Add 4 players
+1. Add 4 players — confirm they appear in Supabase `players` table
 2. Add an event and enter Tapology points — confirm money auto-calculates (winner = +$15, losers = -$5 each)
 3. Add a second event with a different winner — confirm leaderboard reranks by total money
 4. Test a tie: give two players the same highest points — confirm they split the pot
 5. Confirm Tapology points appear on event cards but NOT on the leaderboard
 6. Edit an event's points and confirm money and leaderboard recalculate
-7. Delete a player and confirm their scores are cleaned up from all events
-8. Refresh the page and confirm data persists
+7. Delete a player and confirm their scores are cleaned up from all events (cascade delete)
+8. **Open the site in a different browser or incognito** — confirm all data is visible (proves Supabase is working, not localStorage)
 9. Add an upcoming card — confirm all players show as undecided
 10. Vote 3 players "in" and 1 "out" — confirm status shows "LOCKED IN"
 11. Vote 2 "in" and 2 "out" — confirm status shows "NOT ENOUGH"
