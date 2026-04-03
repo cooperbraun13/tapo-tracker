@@ -16,7 +16,21 @@ export interface UFCEvent {
   scores: EventScore[];
 }
 
+export interface PlayerVote {
+  playerId: string;
+  vote: "in" | "out" | null; // null = hasn't voted yet
+}
+
+export interface UpcomingCard {
+  id: string;
+  name: string; // e.g. "UFC 320"
+  date: string; // ISO date string
+  votes: PlayerVote[];
+  promoted: boolean; // true once it's been sent to Events
+}
+
 export interface AppData {
   players: Player[];
   events: UFCEvent[];
+  upcoming: UpcomingCard[];
 }

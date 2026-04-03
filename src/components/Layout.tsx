@@ -3,7 +3,7 @@
 import { useState, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const TABS = ["Leaderboard", "Events", "Manage"] as const;
+const TABS = ["Leaderboard", "Events", "Upcoming", "Manage"] as const;
 type Tab = (typeof TABS)[number];
 
 interface LayoutProps {

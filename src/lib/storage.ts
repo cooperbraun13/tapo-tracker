@@ -5,6 +5,7 @@ const STORAGE_KEY = "tapo-tracker";
 const DEFAULT_DATA: AppData = {
   players: [],
   events: [],
+  upcoming: [],
 };
 
 export function loadData(): AppData {
@@ -12,7 +13,10 @@ export function loadData(): AppData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_DATA;
-    return JSON.parse(raw) as AppData;
+    const parsed = JSON.parse(raw);
+    // Migrate: older data may not have upcoming
+    if (!parsed.upcoming) parsed.upcoming = [];
+    return parsed as AppData;
   } catch {
     return DEFAULT_DATA;
   }

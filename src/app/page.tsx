@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import Leaderboard from "@/components/Leaderboard";
 import PlayerManager from "@/components/PlayerManager";
 import EventList from "@/components/EventList";
+import UpcomingCards from "@/components/UpcomingCards";
 
 export default function Home() {
   const {
@@ -15,6 +16,10 @@ export default function Home() {
     addEvent,
     updateEventScores,
     deleteEvent,
+    addUpcomingCard,
+    setVote,
+    promoteCard,
+    deleteUpcomingCard,
     resetData,
   } = useAppData();
 
@@ -30,6 +35,18 @@ export default function Home() {
               onAddPlayer={addPlayer}
               onRemovePlayer={removePlayer}
               onReset={resetData}
+            />
+          );
+        }
+        if (activeTab === "Upcoming") {
+          return (
+            <UpcomingCards
+              cards={data.upcoming}
+              players={data.players}
+              onAddCard={addUpcomingCard}
+              onVote={setVote}
+              onPromote={promoteCard}
+              onDelete={deleteUpcomingCard}
             />
           );
         }
