@@ -14,8 +14,7 @@ interface EventCardProps {
 }
 
 function formatMoney(amount: number): string {
-  const sign = amount > 0 ? "+" : "";
-  return `${sign}$${Math.abs(amount)}`;
+  return `$${Math.abs(amount)}`;
 }
 
 function formatDate(iso: string): string {

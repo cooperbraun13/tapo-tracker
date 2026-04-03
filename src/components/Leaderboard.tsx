@@ -13,8 +13,7 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 
 function formatMoney(n: number): string {
   const rounded = Math.round(n);
-  const sign = rounded > 0 ? "+" : "";
-  return `${sign}$${Math.abs(rounded)}`;
+  return `$${Math.abs(rounded)}`;
 }
 
 export default function Leaderboard({ data }: LeaderboardProps) {
