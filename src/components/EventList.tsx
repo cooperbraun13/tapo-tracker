@@ -110,14 +110,14 @@ export default function EventList({
                 >
                   <span className="font-body">{p.name}</span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={scores[p.id] ?? ""}
-                    onChange={(e) =>
-                      setScores((prev) => ({
-                        ...prev,
-                        [p.id]: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^\d+$/.test(v))
+                        setScores((prev) => ({ ...prev, [p.id]: v }));
+                    }}
                     className="w-20 bg-bg border border-border px-2 py-1 text-right text-sm text-text focus:outline-none focus:border-gold transition-colors duration-150"
                     placeholder="0"
                   />

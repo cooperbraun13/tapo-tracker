@@ -151,9 +151,14 @@ export default function EventCard({
                   <div className="flex items-center gap-4">
                     {editing ? (
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={s.points || ""}
-                        onChange={(e) => updatePoints(s.playerId, e.target.value)}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "" || /^\d+$/.test(v))
+                            updatePoints(s.playerId, v);
+                        }}
                         className="w-20 bg-bg border border-border px-2 py-1 text-right text-sm text-text focus:outline-none focus:border-gold transition-colors duration-150"
                         placeholder="0"
                       />
