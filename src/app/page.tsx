@@ -2,6 +2,7 @@
 
 import { useAppData } from "@/hooks/useAppData";
 import Layout from "@/components/Layout";
+import Leaderboard from "@/components/Leaderboard";
 import PlayerManager from "@/components/PlayerManager";
 import EventList from "@/components/EventList";
 
@@ -43,12 +44,7 @@ export default function Home() {
             />
           );
         }
-        // Leaderboard placeholder
-        return (
-          <div className="text-text-muted text-sm py-4">
-            Leaderboard coming soon.
-          </div>
-        );
+        return <Leaderboard data={data} />;
       }}
     </Layout>
   );
