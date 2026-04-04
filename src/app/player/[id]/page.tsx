@@ -19,6 +19,8 @@ import { Player, UFCEvent, AppData } from "@/lib/types";
 import { calculateMoney } from "@/lib/scoring";
 import { computeMedals } from "@/lib/medals";
 import MedalBadge from "@/components/MedalBadge";
+import { supabase } from "@/lib/supabase";
+import { updateOwnName } from "@/app/admin/actions";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -241,6 +243,140 @@ function ChartTooltip({
   );
 }
 
+// ─── Account settings (own profile only) ────────────────────────────────────
+
+function AccountSettings({
+  playerId,
+  currentName,
+  onNameSaved,
+}: {
+  playerId: string;
+  currentName: string;
+  onNameSaved: (newName: string) => void;
+}) {
+  const [name, setName] = useState(currentName);
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameMsg, setNameMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function handleNameSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || name.trim() === currentName) return;
+    setNameSaving(true);
+    setNameMsg(null);
+    const { error } = await updateOwnName(playerId, name);
+    setNameSaving(false);
+    if (error) {
+      setNameMsg({ ok: false, text: error });
+    } else {
+      setNameMsg({ ok: true, text: "Name updated." });
+      onNameSaved(name.trim());
+    }
+  }
+
+  async function handlePasswordSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setPwMsg({ ok: false, text: "Passwords do not match." });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPwMsg({ ok: false, text: "Password must be at least 6 characters." });
+      return;
+    }
+    setPwSaving(true);
+    setPwMsg(null);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPwSaving(false);
+    if (error) {
+      setPwMsg({ ok: false, text: error.message });
+    } else {
+      setPwMsg({ ok: true, text: "Password updated." });
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+  }
+
+  const inputCls =
+    "w-full bg-bg border border-border px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-gold transition-colors duration-150";
+  const labelCls =
+    "block text-text-muted text-xs font-heading uppercase tracking-widest";
+
+  return (
+    <section className="space-y-4 border border-border bg-surface p-5">
+      <h2 className="font-heading text-xs font-bold uppercase tracking-widest text-text-muted">
+        Account Settings
+      </h2>
+
+      {/* Change name */}
+      <form onSubmit={handleNameSave} className="space-y-2">
+        <label className={labelCls}>Display Name</label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={`${inputCls} flex-1`}
+            placeholder="Your name"
+            maxLength={40}
+          />
+          <button
+            type="submit"
+            disabled={nameSaving || !name.trim() || name.trim() === currentName}
+            className="px-4 py-2 bg-gold/10 border border-gold/30 text-gold font-heading font-semibold uppercase text-xs tracking-wider hover:bg-gold/20 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          >
+            {nameSaving ? "Saving…" : "Save"}
+          </button>
+        </div>
+        {nameMsg && (
+          <p className={`text-xs font-body ${nameMsg.ok ? "text-green" : "text-red"}`}>
+            {nameMsg.text}
+          </p>
+        )}
+      </form>
+
+      <div className="border-t border-border" />
+
+      {/* Change password */}
+      <form onSubmit={handlePasswordSave} className="space-y-2">
+        <label className={labelCls}>Change Password</label>
+        <input
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          className={inputCls}
+          placeholder="New password"
+          autoComplete="new-password"
+        />
+        <input
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          className={inputCls}
+          placeholder="Confirm new password"
+          autoComplete="new-password"
+        />
+        {pwMsg && (
+          <p className={`text-xs font-body ${pwMsg.ok ? "text-green" : "text-red"}`}>
+            {pwMsg.text}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={pwSaving || !newPassword || !confirmPassword}
+          className="px-4 py-2 bg-gold/10 border border-gold/30 text-gold font-heading font-semibold uppercase text-xs tracking-wider hover:bg-gold/20 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {pwSaving ? "Updating…" : "Update Password"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
 // ─── page ────────────────────────────────────────────────────────────────────
 
 export default function PlayerProfilePage() {
@@ -251,11 +387,19 @@ export default function PlayerProfilePage() {
   const [loaded, setLoaded] = useState(false);
   const [yearFilter, setYearFilter] = useState("all");
   const [promoFilter, setPromoFilter] = useState("all");
+  const [currentAuthId, setCurrentAuthId] = useState<string | null>(null);
+
+  const refreshPlayers = () => getPlayers().then(setPlayers);
 
   useEffect(() => {
-    Promise.all([getPlayers(), getEvents()]).then(([p, e]) => {
+    Promise.all([
+      getPlayers(),
+      getEvents(),
+      supabase.auth.getUser(),
+    ]).then(([p, e, { data: { user } }]) => {
       setPlayers(p);
       setEvents(e);
+      setCurrentAuthId(user?.id ?? null);
       setLoaded(true);
     });
   }, []);
@@ -330,6 +474,12 @@ export default function PlayerProfilePage() {
 
   const showFilters =
     availableYears.length > 1 || availablePromos.length > 1;
+
+  // Show account settings only when the logged-in user owns this profile
+  const isOwnProfile =
+    !!currentAuthId &&
+    !!player?.authUserId &&
+    currentAuthId === player.authUserId;
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
@@ -648,6 +798,15 @@ export default function PlayerProfilePage() {
               </div>
             </section>
           </>
+        )}
+
+        {/* Account settings — only shown to the profile owner */}
+        {isOwnProfile && (
+          <AccountSettings
+            playerId={player.id}
+            currentName={player.name}
+            onNameSaved={() => refreshPlayers()}
+          />
         )}
       </main>
     </div>
