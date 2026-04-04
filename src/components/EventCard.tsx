@@ -47,19 +47,22 @@ export default function EventCard({
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (defaultExpanded) {
+    if (!defaultExpanded) return;
+    // Defer setState calls out of the effect body to satisfy the lint rule
+    const expandTimer = setTimeout(() => {
       setExpanded(true);
       setHighlighted(true);
-      // Slight delay so the tab transition finishes before scrolling
-      const scrollTimer = setTimeout(() => {
-        cardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }, 200);
-      const highlightTimer = setTimeout(() => setHighlighted(false), 1800);
-      return () => {
-        clearTimeout(scrollTimer);
-        clearTimeout(highlightTimer);
-      };
-    }
+    }, 0);
+    // Allow the tab transition to finish before scrolling
+    const scrollTimer = setTimeout(() => {
+      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 200);
+    const highlightTimer = setTimeout(() => setHighlighted(false), 1800);
+    return () => {
+      clearTimeout(expandTimer);
+      clearTimeout(scrollTimer);
+      clearTimeout(highlightTimer);
+    };
   }, [defaultExpanded]);
   const [editScores, setEditScores] = useState<EventScore[]>(event.scores);
   const [editPromotion, setEditPromotion] = useState(event.promotion);

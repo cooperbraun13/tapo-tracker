@@ -4,10 +4,12 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Player, UpcomingCard } from "@/lib/types";
 
+const PROMOTIONS = ["UFC", "Bellator", "PFL", "ONE", "Other"];
+
 interface UpcomingCardsProps {
   cards: UpcomingCard[];
   players: Player[];
-  onAddCard: (name: string, date: string) => void;
+  onAddCard: (name: string, date: string, promotion: string) => void;
   onVote: (cardId: string, playerId: string, vote: "in" | "out" | null) => void;
   onPromote: (cardId: string) => void;
   onDelete: (cardId: string) => void;
@@ -21,7 +23,6 @@ function getStatus(card: UpcomingCard): Status {
   const undecided = card.votes.filter((v) => v.vote === null).length;
   if (undecided > 0) return "WAITING";
   const inCount = card.votes.filter((v) => v.vote === "in").length;
-  // Majority or unanimous = locked in (3-1 or 4-0 with 4 players, or >50% generally)
   return inCount > total / 2 ? "LOCKED IN" : "NOT ENOUGH";
 }
 
@@ -51,23 +52,25 @@ export default function UpcomingCards({
   const [adding, setAdding] = useState(false);
   const [cardName, setCardName] = useState("");
   const [cardDate, setCardDate] = useState("");
+  const [promotion, setPromotion] = useState("UFC");
 
   const resetForm = () => {
     setCardName("");
     setCardDate("");
+    setPromotion("UFC");
     setAdding(false);
   };
 
   const handleSave = () => {
     if (!cardName.trim() || !cardDate) return;
-    onAddCard(cardName.trim(), cardDate);
+    onAddCard(cardName.trim(), cardDate, promotion);
     resetForm();
   };
 
   const playerName = (id: string) =>
     players.find((p) => p.id === id)?.name ?? "Unknown";
 
-  // Sort by date ascending, promoted/past cards at bottom
+  // Sort: active upcoming first (ascending), then past/promoted at bottom
   const sorted = [...cards].sort((a, b) => {
     if (a.promoted !== b.promoted) return a.promoted ? 1 : -1;
     const aPast = isPast(a.date);
@@ -108,13 +111,13 @@ export default function UpcomingCards({
             transition={{ duration: 0.15 }}
             className="border border-gold/30 bg-surface p-4 space-y-3"
           >
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <input
                 type="text"
                 value={cardName}
                 onChange={(e) => setCardName(e.target.value)}
                 placeholder='e.g. "UFC 320"'
-                className="flex-1 bg-bg border border-border px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-gold transition-colors duration-150"
+                className="flex-1 min-w-40 bg-bg border border-border px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-gold transition-colors duration-150"
               />
               <input
                 type="date"
@@ -122,6 +125,19 @@ export default function UpcomingCards({
                 onChange={(e) => setCardDate(e.target.value)}
                 className="bg-bg border border-border px-3 py-2 text-text focus:outline-none focus:border-gold transition-colors duration-150"
               />
+            </div>
+            <div>
+              <select
+                value={promotion}
+                onChange={(e) => setPromotion(e.target.value)}
+                className="bg-bg border border-border px-3 py-2 text-text focus:outline-none focus:border-gold transition-colors duration-150"
+              >
+                {PROMOTIONS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="flex gap-2">
               <button
@@ -148,6 +164,7 @@ export default function UpcomingCards({
           {sorted.map((card, i) => {
             const status = getStatus(card);
             const past = isPast(card.date);
+            const votesLocked = past; // votes locked once event date passes
             const dimmed = card.promoted || (past && status !== "LOCKED IN");
             const canPromote = status === "LOCKED IN" && past && !card.promoted;
 
@@ -165,16 +182,21 @@ export default function UpcomingCards({
                 }`}
               >
                 {/* Header */}
-                <div className="px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-wrap">
                     <span className="font-heading font-bold text-base uppercase tracking-wide">
                       {card.name}
                     </span>
-                    <span className="text-text-muted text-sm">
+                    {card.promotion !== "UFC" && (
+                      <span className="text-xs font-heading uppercase tracking-wider text-text-muted border border-border px-1.5 py-0.5 shrink-0">
+                        {card.promotion}
+                      </span>
+                    )}
+                    <span className="text-text-muted text-sm shrink-0">
                       {formatDate(card.date)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     {card.promoted ? (
                       <span className="font-heading text-xs uppercase tracking-wider text-text-muted">
                         Promoted
@@ -198,6 +220,11 @@ export default function UpcomingCards({
                 {/* Votes */}
                 {!card.promoted && (
                   <div className="border-t border-border px-4 py-2 space-y-1">
+                    {votesLocked && (
+                      <p className="text-text-muted text-xs px-2 pb-1 font-heading uppercase tracking-wider">
+                        Votes locked
+                      </p>
+                    )}
                     {card.votes.map((v) => (
                       <div
                         key={v.playerId}
@@ -211,15 +238,20 @@ export default function UpcomingCards({
                       >
                         <span className="font-body">{playerName(v.playerId)}</span>
                         <button
-                          onClick={() =>
-                            onVote(card.id, v.playerId, cycleVote(v.vote))
-                          }
+                          onClick={() => {
+                            if (!votesLocked) {
+                              onVote(card.id, v.playerId, cycleVote(v.vote));
+                            }
+                          }}
+                          disabled={votesLocked}
                           className={`w-8 h-8 flex items-center justify-center font-heading font-bold text-sm transition-colors duration-150 ${
-                            v.vote === "in"
-                              ? "text-green"
+                            votesLocked
+                              ? "cursor-default opacity-60"
+                              : v.vote === "in"
+                              ? "text-green hover:text-green/70 cursor-pointer"
                               : v.vote === "out"
-                              ? "text-red"
-                              : "text-text-muted hover:text-text"
+                              ? "text-red hover:text-red/70 cursor-pointer"
+                              : "text-text-muted hover:text-text cursor-pointer"
                           }`}
                         >
                           {v.vote === "in" ? "✓" : v.vote === "out" ? "✗" : "—"}
@@ -228,7 +260,7 @@ export default function UpcomingCards({
                     ))}
 
                     {/* Waiting indicator */}
-                    {status === "WAITING" && (
+                    {status === "WAITING" && !votesLocked && (
                       <p className="text-text-muted text-xs pt-1 px-2">
                         Waiting on:{" "}
                         {card.votes

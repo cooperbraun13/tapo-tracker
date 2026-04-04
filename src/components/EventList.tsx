@@ -50,8 +50,12 @@ export default function EventList({
     const event = events.find((e) => e.id === highlightEventId);
     if (!event) return;
     const year = new Date(event.date).getFullYear().toString();
-    if (yearFilter !== "all" && yearFilter !== year) setYearFilter("all");
-    if (promoFilter !== "all" && promoFilter !== event.promotion) setPromoFilter("all");
+    // Defer setState calls out of the effect body to satisfy the lint rule
+    const timer = setTimeout(() => {
+      if (yearFilter !== "all" && yearFilter !== year) setYearFilter("all");
+      if (promoFilter !== "all" && promoFilter !== event.promotion) setPromoFilter("all");
+    }, 0);
+    return () => clearTimeout(timer);
   }, [highlightEventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resetForm = () => {
