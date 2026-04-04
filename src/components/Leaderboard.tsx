@@ -3,7 +3,9 @@
 import { motion } from "framer-motion";
 import { AppData } from "@/lib/types";
 import { computeLeaderboard } from "@/lib/scoring";
+import { computeMedals } from "@/lib/medals";
 import AnimatedNumber from "./AnimatedNumber";
+import MedalBadge from "./MedalBadge";
 
 interface LeaderboardProps {
   data: AppData;
@@ -18,6 +20,7 @@ function formatMoney(n: number): string {
 
 export default function Leaderboard({ data }: LeaderboardProps) {
   const stats = computeLeaderboard(data);
+  const medals = computeMedals(data);
 
   if (data.players.length === 0) {
     return (
@@ -77,14 +80,17 @@ export default function Leaderboard({ data }: LeaderboardProps) {
                 )}
               </div>
 
-              {/* Name */}
-              <span
-                className={`flex-1 font-heading font-bold text-base uppercase tracking-wide ${
-                  isFirst ? "text-gold" : ""
-                }`}
-              >
-                {player.name}
-              </span>
+              {/* Name + medals */}
+              <div className="flex-1 flex items-center min-w-0">
+                <span
+                  className={`font-heading font-bold text-base uppercase tracking-wide truncate ${
+                    isFirst ? "text-gold" : ""
+                  }`}
+                >
+                  {player.name}
+                </span>
+                <MedalBadge medals={medals.get(player.playerId) ?? []} />
+              </div>
 
               {/* Money */}
               <AnimatedNumber
