@@ -5,6 +5,7 @@ export interface Player {
   discordId?: string;
   discordUsername?: string;
   role: "admin" | "user";
+  authUserId?: string; // Supabase Auth user id — set when the player accepts an invite
 }
 
 export interface EventScore {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { UFCEvent, EventScore, Player } from "@/lib/types";
 import { calculateMoney } from "@/lib/scoring";
@@ -17,6 +17,7 @@ interface EventCardProps {
   ) => void;
   onDelete: (eventId: string) => void;
   index: number;
+  defaultExpanded?: boolean;
 }
 
 function formatMoney(amount: number): string {
@@ -39,8 +40,30 @@ export default function EventCard({
   onUpdateEvent,
   onDelete,
   index,
+  defaultExpanded,
 }: EventCardProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false);
+  const [highlighted, setHighlighted] = useState(defaultExpanded ?? false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!defaultExpanded) return;
+    // Defer setState calls out of the effect body to satisfy the lint rule
+    const expandTimer = setTimeout(() => {
+      setExpanded(true);
+      setHighlighted(true);
+    }, 0);
+    // Allow the tab transition to finish before scrolling
+    const scrollTimer = setTimeout(() => {
+      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 200);
+    const highlightTimer = setTimeout(() => setHighlighted(false), 1800);
+    return () => {
+      clearTimeout(expandTimer);
+      clearTimeout(scrollTimer);
+      clearTimeout(highlightTimer);
+    };
+  }, [defaultExpanded]);
   const [editScores, setEditScores] = useState<EventScore[]>(event.scores);
   const [editPromotion, setEditPromotion] = useState(event.promotion);
   const [editHasPool, setEditHasPool] = useState(event.hasPool);
@@ -101,10 +124,13 @@ export default function EventCard({
 
   return (
     <motion.div
+      ref={cardRef}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, delay: index * 0.04 }}
-      className="border border-border bg-surface"
+      className={`border bg-surface transition-colors duration-700 ${
+        highlighted ? "border-gold/50 shadow-[0_0_16px_rgba(212,168,67,0.12)]" : "border-border"
+      }`}
     >
       {/* Collapsed header */}
       <button

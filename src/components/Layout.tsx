@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, ReactNode } from "react";
+import { ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const TABS = ["Leaderboard", "Events", "Upcoming", "Manage"] as const;
-type Tab = (typeof TABS)[number];
+export const TABS = ["Leaderboard", "Events", "Upcoming", "Manage"] as const;
+export type Tab = (typeof TABS)[number];
 
 interface LayoutProps {
   children: (activeTab: Tab) => ReactNode;
+  activeTab: Tab;
+  onTabChange: (tab: Tab) => void;
 }
 
-export default function Layout({ children }: LayoutProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("Leaderboard");
-
+export default function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   return (
     <div className="flex flex-col min-h-screen">
       <header className="border-b border-border">
@@ -24,7 +24,7 @@ export default function Layout({ children }: LayoutProps) {
             {TABS.map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => onTabChange(tab)}
                 className={`relative px-4 py-1.5 font-heading text-sm font-semibold uppercase tracking-wider transition-colors duration-150 ${
                   activeTab === tab
                     ? "text-gold"

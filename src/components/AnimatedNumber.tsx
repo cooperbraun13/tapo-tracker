@@ -24,10 +24,7 @@ export default function AnimatedNumber({
     const to = value;
     prev.current = to;
 
-    if (from === to) {
-      setDisplay(to);
-      return;
-    }
+    if (from === to) return;
 
     const start = performance.now();
     const tick = (now: number) => {

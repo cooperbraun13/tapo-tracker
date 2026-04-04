@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { AppData } from "@/lib/types";
 import { computeLeaderboard } from "@/lib/scoring";
@@ -9,6 +10,7 @@ import MedalBadge from "./MedalBadge";
 
 interface LeaderboardProps {
   data: AppData;
+  onNavigate: (target: "leaderboard" | "events", eventId?: string) => void;
 }
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -18,7 +20,7 @@ function formatMoney(n: number): string {
   return `$${Math.abs(rounded)}`;
 }
 
-export default function Leaderboard({ data }: LeaderboardProps) {
+export default function Leaderboard({ data, onNavigate }: LeaderboardProps) {
   const stats = computeLeaderboard(data);
   const medals = computeMedals(data);
 
@@ -82,14 +84,18 @@ export default function Leaderboard({ data }: LeaderboardProps) {
 
               {/* Name + medals */}
               <div className="flex-1 flex items-center min-w-0">
-                <span
-                  className={`font-heading font-bold text-base uppercase tracking-wide truncate ${
-                    isFirst ? "text-gold" : ""
+                <Link
+                  href={`/player/${player.playerId}`}
+                  className={`font-heading font-bold text-base uppercase tracking-wide truncate underline-offset-2 hover:underline decoration-gold/40 transition-colors duration-150 ${
+                    isFirst ? "text-gold" : "hover:text-gold/80"
                   }`}
                 >
                   {player.name}
-                </span>
-                <MedalBadge medals={medals.get(player.playerId) ?? []} />
+                </Link>
+                <MedalBadge
+                  medals={medals.get(player.playerId) ?? []}
+                  onNavigate={onNavigate}
+                />
               </div>
 
               {/* Money */}
