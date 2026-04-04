@@ -75,10 +75,6 @@ export default function EventCard({
     );
   };
 
-  const maxPoints = event.scores.length > 0
-    ? Math.max(...event.scores.map((s) => s.points))
-    : 0;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -110,8 +106,7 @@ export default function EventCard({
           <div className="space-y-1">
             {(editing ? editScores : event.scores).map((s) => {
               const m = editing ? null : money.get(s.playerId) ?? 0;
-              const isWinner =
-                !editing && s.points === maxPoints && (m ?? 0) > 0;
+              const isWinner = !editing && (m ?? 0) > 0;
               return (
                 <div
                   key={s.playerId}

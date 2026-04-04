@@ -8,7 +8,12 @@ import EventCard from "./EventCard";
 interface EventListProps {
   events: UFCEvent[];
   players: Player[];
-  onAddEvent: (name: string, date: string, scores: EventScore[]) => void;
+  onAddEvent: (
+    name: string,
+    date: string,
+    scores: EventScore[],
+    opts?: { promotion?: string; hasPool?: boolean; buyIn?: number }
+  ) => void;
   onUpdateScores: (eventId: string, scores: EventScore[]) => void;
   onDeleteEvent: (eventId: string) => void;
 }
@@ -23,11 +28,17 @@ export default function EventList({
   const [adding, setAdding] = useState(false);
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [promotion, setPromotion] = useState("UFC");
+  const [hasPool, setHasPool] = useState(true);
+  const [buyIn, setBuyIn] = useState("5");
   const [scores, setScores] = useState<Record<string, string>>({});
 
   const resetForm = () => {
     setEventName("");
     setEventDate("");
+    setPromotion("UFC");
+    setHasPool(true);
+    setBuyIn("5");
     setScores({});
     setAdding(false);
   };
@@ -49,7 +60,11 @@ export default function EventList({
         points: parseInt(scores[p.id], 10) || 0,
       }));
     if (eventScores.length === 0) return;
-    onAddEvent(eventName.trim(), eventDate, eventScores);
+    onAddEvent(eventName.trim(), eventDate, eventScores, {
+      promotion,
+      hasPool,
+      buyIn: hasPool ? (parseInt(buyIn, 10) || 5) : 5,
+    });
     resetForm();
   };
 
@@ -98,6 +113,46 @@ export default function EventList({
                 onChange={(e) => setEventDate(e.target.value)}
                 className="bg-bg border border-border px-3 py-2 text-text focus:outline-none focus:border-gold transition-colors duration-150"
               />
+            </div>
+            <div className="flex gap-2 items-center flex-wrap">
+              <select
+                value={promotion}
+                onChange={(e) => setPromotion(e.target.value)}
+                className="bg-bg border border-border px-3 py-2 text-text focus:outline-none focus:border-gold transition-colors duration-150"
+              >
+                {["UFC", "Bellator", "PFL", "ONE"].map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <span className="text-text-muted text-sm font-heading uppercase tracking-wider">Pool</span>
+                <button
+                  type="button"
+                  onClick={() => setHasPool((v) => !v)}
+                  className={`w-10 h-5 relative transition-colors duration-150 border ${hasPool ? "bg-gold/20 border-gold/40" : "bg-bg border-border"}`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-4 h-4 transition-transform duration-150 ${hasPool ? "translate-x-5 bg-gold" : "translate-x-0.5 bg-text-muted"}`}
+                  />
+                </button>
+              </label>
+              {hasPool && (
+                <div className="flex items-center gap-1">
+                  <span className="text-text-muted text-sm">$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={buyIn}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^\d+$/.test(v)) setBuyIn(v);
+                    }}
+                    className="w-14 bg-bg border border-border px-2 py-2 text-text focus:outline-none focus:border-gold transition-colors duration-150"
+                    placeholder="5"
+                  />
+                  <span className="text-text-muted text-sm">buy-in</span>
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <p className="text-text-muted text-xs font-heading uppercase tracking-wider mb-2">
