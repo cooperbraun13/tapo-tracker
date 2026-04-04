@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Player, EventScore, UFCEvent } from "@/lib/types";
 import EventCard from "./EventCard";
 
+const PROMOTIONS = ["UFC", "Bellator", "PFL", "ONE", "Other"];
+
 interface EventListProps {
   events: UFCEvent[];
   players: Player[];
@@ -14,6 +16,10 @@ interface EventListProps {
     scores: EventScore[],
     opts?: { promotion?: string; hasPool?: boolean; buyIn?: number }
   ) => void;
+  onUpdateEvent: (
+    eventId: string,
+    updates: { promotion?: string; hasPool?: boolean; buyIn?: number }
+  ) => void;
   onUpdateScores: (eventId: string, scores: EventScore[]) => void;
   onDeleteEvent: (eventId: string) => void;
 }
@@ -22,6 +28,7 @@ export default function EventList({
   events,
   players,
   onAddEvent,
+  onUpdateEvent,
   onUpdateScores,
   onDeleteEvent,
 }: EventListProps) {
@@ -32,6 +39,8 @@ export default function EventList({
   const [hasPool, setHasPool] = useState(true);
   const [buyIn, setBuyIn] = useState("5");
   const [scores, setScores] = useState<Record<string, string>>({});
+  const [yearFilter, setYearFilter] = useState<string>("all");
+  const [promoFilter, setPromoFilter] = useState<string>("all");
 
   const resetForm = () => {
     setEventName("");
@@ -73,6 +82,25 @@ export default function EventList({
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
+  // Derive filter options from actual events
+  const availableYears = Array.from(
+    new Set(sorted.map((e) => new Date(e.date).getFullYear()))
+  ).sort((a, b) => b - a);
+
+  const availablePromos = Array.from(
+    new Set(sorted.map((e) => e.promotion))
+  ).sort();
+
+  // Apply filters
+  const filtered = sorted.filter((e) => {
+    const year = new Date(e.date).getFullYear().toString();
+    if (yearFilter !== "all" && year !== yearFilter) return false;
+    if (promoFilter !== "all" && e.promotion !== promoFilter) return false;
+    return true;
+  });
+
+  const showFilters = availableYears.length > 1 || availablePromos.length > 1;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -88,6 +116,44 @@ export default function EventList({
           </button>
         )}
       </div>
+
+      {/* Filters */}
+      {showFilters && !adding && (
+        <div className="flex gap-2 items-center flex-wrap">
+          {availableYears.length > 1 && (
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="bg-surface border border-border px-3 py-1.5 text-sm text-text focus:outline-none focus:border-gold transition-colors duration-150"
+            >
+              <option value="all">All Years</option>
+              {availableYears.map((y) => (
+                <option key={y} value={String(y)}>{y}</option>
+              ))}
+            </select>
+          )}
+          {availablePromos.length > 1 && (
+            <select
+              value={promoFilter}
+              onChange={(e) => setPromoFilter(e.target.value)}
+              className="bg-surface border border-border px-3 py-1.5 text-sm text-text focus:outline-none focus:border-gold transition-colors duration-150"
+            >
+              <option value="all">All Promotions</option>
+              {availablePromos.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          )}
+          {(yearFilter !== "all" || promoFilter !== "all") && (
+            <button
+              onClick={() => { setYearFilter("all"); setPromoFilter("all"); }}
+              className="text-xs text-text-muted hover:text-text font-heading uppercase tracking-wider transition-colors duration-150"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
 
       {/* New event form */}
       <AnimatePresence>
@@ -120,7 +186,7 @@ export default function EventList({
                 onChange={(e) => setPromotion(e.target.value)}
                 className="bg-bg border border-border px-3 py-2 text-text focus:outline-none focus:border-gold transition-colors duration-150"
               >
-                {["UFC", "Bellator", "PFL", "ONE"].map((p) => (
+                {PROMOTIONS.map((p) => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
@@ -200,12 +266,13 @@ export default function EventList({
 
       {/* Event list */}
       <div className="space-y-1">
-        {sorted.map((event, i) => (
+        {filtered.map((event, i) => (
           <EventCard
             key={event.id}
             event={event}
             players={players}
             onUpdateScores={onUpdateScores}
+            onUpdateEvent={onUpdateEvent}
             onDelete={onDeleteEvent}
             index={i}
           />
@@ -214,7 +281,12 @@ export default function EventList({
           <p className="text-text-muted text-sm py-4">
             {players.length === 0
               ? "Add players in the Manage tab first, then come back to add events."
-              : "No events yet. Click \"+ New Event\" to add one."}
+              : 'No events yet. Click "+ New Event" to add one.'}
+          </p>
+        )}
+        {events.length > 0 && filtered.length === 0 && (
+          <p className="text-text-muted text-sm py-4">
+            No events match the current filters.
           </p>
         )}
       </div>

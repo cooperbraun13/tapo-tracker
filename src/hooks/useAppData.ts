@@ -75,6 +75,22 @@ export function useAppData() {
     []
   );
 
+  const updateEvent = useCallback(
+    async (
+      eventId: string,
+      updates: { name?: string; promotion?: string; hasPool?: boolean; buyIn?: number }
+    ) => {
+      await storage.updateEvent(eventId, updates);
+      setData((prev) => ({
+        ...prev,
+        events: prev.events.map((e) =>
+          e.id === eventId ? { ...e, ...updates } : e
+        ),
+      }));
+    },
+    []
+  );
+
   const updateEventScores = useCallback(
     async (eventId: string, scores: EventScore[]) => {
       await storage.updateEventScores(eventId, scores);
@@ -163,6 +179,7 @@ export function useAppData() {
     updatePlayer,
     removePlayer,
     addEvent,
+    updateEvent,
     updateEventScores,
     finalizeEvent,
     deleteEvent,

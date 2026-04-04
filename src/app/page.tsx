@@ -14,6 +14,7 @@ export default function Home() {
     addPlayer,
     removePlayer,
     addEvent,
+    updateEvent,
     updateEventScores,
     deleteEvent,
     addUpcomingCard,
@@ -54,6 +55,7 @@ export default function Home() {
               events={data.events}
               players={data.players}
               onAddEvent={addEvent}
+              onUpdateEvent={updateEvent}
               onUpdateScores={updateEventScores}
               onDeleteEvent={deleteEvent}
             />

@@ -160,6 +160,19 @@ export async function updateEventScores(
   }
 }
 
+export async function updateEvent(
+  eventId: string,
+  updates: { name?: string; promotion?: string; hasPool?: boolean; buyIn?: number }
+): Promise<void> {
+  const row: Record<string, unknown> = {};
+  if (updates.name !== undefined) row.name = updates.name;
+  if (updates.promotion !== undefined) row.promotion = updates.promotion;
+  if (updates.hasPool !== undefined) row.has_pool = updates.hasPool;
+  if (updates.buyIn !== undefined) row.buy_in = updates.buyIn;
+  const { error } = await supabase.from("events").update(row).eq("id", eventId);
+  if (error) throw error;
+}
+
 export async function finalizeEvent(eventId: string): Promise<void> {
   const { error } = await supabase
     .from("events")
