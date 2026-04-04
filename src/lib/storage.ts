@@ -3,7 +3,7 @@ import { Player, UFCEvent, EventScore, UpcomingCard } from "./types";
 
 // --- Players ---
 
-const PLAYER_COLS = "id, name, tapology_username, discord_id, discord_username, role";
+const PLAYER_COLS = "id, name, tapology_username, discord_id, discord_username, role, auth_user_id";
 
 export async function getPlayers(): Promise<Player[]> {
   const { data, error } = await supabase
@@ -57,7 +57,23 @@ function mapPlayer(row: Record<string, unknown>): Player {
     discordId: (row.discord_id as string) ?? undefined,
     discordUsername: (row.discord_username as string) ?? undefined,
     role: (row.role as "admin" | "user") ?? "user",
+    authUserId: (row.auth_user_id as string) ?? undefined,
   };
+}
+
+/**
+ * Link a player record to a Supabase Auth user.
+ * Called server-side after an invite is accepted or manually linked.
+ */
+export async function updatePlayerAuthId(
+  playerId: string,
+  authUserId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("players")
+    .update({ auth_user_id: authUserId })
+    .eq("id", playerId);
+  if (error) throw error;
 }
 
 // --- Events ---
