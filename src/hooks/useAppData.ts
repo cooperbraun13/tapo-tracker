@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AppData, EventScore } from "@/lib/types";
+import { AppData, EventScore, Player } from "@/lib/types";
 import * as storage from "@/lib/storage";
 
 const EMPTY: AppData = { players: [], events: [], upcoming: [] };
@@ -31,6 +31,16 @@ export function useAppData() {
     setData((prev) => ({ ...prev, players: [...prev.players, player] }));
   }, []);
 
+  const updatePlayer = useCallback(async (id: string, updates: Partial<Player>) => {
+    await storage.updatePlayer(id, updates);
+    setData((prev) => ({
+      ...prev,
+      players: prev.players.map((p) =>
+        p.id === id ? { ...p, ...updates } : p
+      ),
+    }));
+  }, []);
+
   const removePlayer = useCallback(async (playerId: string) => {
     await storage.removePlayer(playerId);
     setData((prev) => ({
@@ -50,8 +60,16 @@ export function useAppData() {
   // --- Event mutations ---
 
   const addEvent = useCallback(
-    async (name: string, date: string, scores: EventScore[]) => {
-      const event = await storage.addEvent(name, date, scores);
+    async (
+      name: string,
+      date: string,
+      scores: EventScore[],
+      opts?: { promotion?: string; hasPool?: boolean; buyIn?: number }
+    ) => {
+      const event = await storage.addEvent(
+        { name, date, promotion: opts?.promotion, hasPool: opts?.hasPool, buyIn: opts?.buyIn },
+        scores
+      );
       setData((prev) => ({ ...prev, events: [...prev.events, event] }));
     },
     []
@@ -70,6 +88,16 @@ export function useAppData() {
     []
   );
 
+  const finalizeEvent = useCallback(async (eventId: string) => {
+    await storage.finalizeEvent(eventId);
+    setData((prev) => ({
+      ...prev,
+      events: prev.events.map((e) =>
+        e.id === eventId ? { ...e, finalized: true } : e
+      ),
+    }));
+  }, []);
+
   const deleteEvent = useCallback(async (eventId: string) => {
     await storage.deleteEvent(eventId);
     setData((prev) => ({
@@ -81,9 +109,9 @@ export function useAppData() {
   // --- Upcoming card mutations ---
 
   const addUpcomingCard = useCallback(
-    async (name: string, date: string) => {
+    async (name: string, date: string, promotion?: string) => {
       const playerIds = data.players.map((p) => p.id);
-      const card = await storage.addUpcomingCard(name, date, playerIds);
+      const card = await storage.addUpcomingCard(name, promotion ?? "UFC", date, playerIds);
       setData((prev) => ({ ...prev, upcoming: [...prev.upcoming, card] }));
     },
     [data.players]
@@ -128,25 +156,19 @@ export function useAppData() {
     }));
   }, []);
 
-  // --- Reset ---
-
-  const resetData = useCallback(async () => {
-    await storage.resetAllData();
-    setData({ players: [], events: [], upcoming: [] });
-  }, []);
-
   return {
     data,
     loaded,
     addPlayer,
+    updatePlayer,
     removePlayer,
     addEvent,
     updateEventScores,
+    finalizeEvent,
     deleteEvent,
     addUpcomingCard,
     setVote,
     promoteCard,
     deleteUpcomingCard,
-    resetData,
   };
 }
