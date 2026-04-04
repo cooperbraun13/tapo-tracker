@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Player, EventScore, UFCEvent } from "@/lib/types";
 import EventCard from "./EventCard";
@@ -22,6 +22,7 @@ interface EventListProps {
   ) => void;
   onUpdateScores: (eventId: string, scores: EventScore[]) => void;
   onDeleteEvent: (eventId: string) => void;
+  highlightEventId?: string;
 }
 
 export default function EventList({
@@ -31,6 +32,7 @@ export default function EventList({
   onUpdateEvent,
   onUpdateScores,
   onDeleteEvent,
+  highlightEventId,
 }: EventListProps) {
   const [adding, setAdding] = useState(false);
   const [eventName, setEventName] = useState("");
@@ -41,6 +43,16 @@ export default function EventList({
   const [scores, setScores] = useState<Record<string, string>>({});
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [promoFilter, setPromoFilter] = useState<string>("all");
+
+  // When navigating to a specific event, clear any filters that would hide it
+  useEffect(() => {
+    if (!highlightEventId) return;
+    const event = events.find((e) => e.id === highlightEventId);
+    if (!event) return;
+    const year = new Date(event.date).getFullYear().toString();
+    if (yearFilter !== "all" && yearFilter !== year) setYearFilter("all");
+    if (promoFilter !== "all" && promoFilter !== event.promotion) setPromoFilter("all");
+  }, [highlightEventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resetForm = () => {
     setEventName("");
@@ -275,6 +287,7 @@ export default function EventList({
             onUpdateEvent={onUpdateEvent}
             onDelete={onDeleteEvent}
             index={i}
+            defaultExpanded={event.id === highlightEventId}
           />
         ))}
         {events.length === 0 && !adding && (

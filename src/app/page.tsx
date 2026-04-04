@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useAppData } from "@/hooks/useAppData";
-import Layout from "@/components/Layout";
+import Layout, { Tab } from "@/components/Layout";
 import Leaderboard from "@/components/Leaderboard";
 import PlayerManager from "@/components/PlayerManager";
 import EventList from "@/components/EventList";
@@ -23,12 +24,26 @@ export default function Home() {
     deleteUpcomingCard,
   } = useAppData();
 
+  const [activeTab, setActiveTab] = useState<Tab>("Leaderboard");
+  const [highlightEventId, setHighlightEventId] = useState<string | undefined>();
+
+  function handleNavigate(target: "leaderboard" | "events", eventId?: string) {
+    if (target === "events") {
+      setActiveTab("Events");
+      setHighlightEventId(eventId);
+      // Clear after EventCard has consumed it (state is initialized once)
+      setTimeout(() => setHighlightEventId(undefined), 500);
+    } else {
+      setActiveTab("Leaderboard");
+    }
+  }
+
   if (!loaded) return null;
 
   return (
-    <Layout>
-      {(activeTab) => {
-        if (activeTab === "Manage") {
+    <Layout activeTab={activeTab} onTabChange={setActiveTab}>
+      {(tab) => {
+        if (tab === "Manage") {
           return (
             <PlayerManager
               players={data.players}
@@ -37,7 +52,7 @@ export default function Home() {
             />
           );
         }
-        if (activeTab === "Upcoming") {
+        if (tab === "Upcoming") {
           return (
             <UpcomingCards
               cards={data.upcoming}
@@ -49,7 +64,7 @@ export default function Home() {
             />
           );
         }
-        if (activeTab === "Events") {
+        if (tab === "Events") {
           return (
             <EventList
               events={data.events}
@@ -58,10 +73,11 @@ export default function Home() {
               onUpdateEvent={updateEvent}
               onUpdateScores={updateEventScores}
               onDeleteEvent={deleteEvent}
+              highlightEventId={highlightEventId}
             />
           );
         }
-        return <Leaderboard data={data} />;
+        return <Leaderboard data={data} onNavigate={handleNavigate} />;
       }}
     </Layout>
   );

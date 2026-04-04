@@ -9,6 +9,7 @@ import MedalBadge from "./MedalBadge";
 
 interface LeaderboardProps {
   data: AppData;
+  onNavigate: (target: "leaderboard" | "events", eventId?: string) => void;
 }
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -18,7 +19,7 @@ function formatMoney(n: number): string {
   return `$${Math.abs(rounded)}`;
 }
 
-export default function Leaderboard({ data }: LeaderboardProps) {
+export default function Leaderboard({ data, onNavigate }: LeaderboardProps) {
   const stats = computeLeaderboard(data);
   const medals = computeMedals(data);
 
@@ -89,7 +90,10 @@ export default function Leaderboard({ data }: LeaderboardProps) {
                 >
                   {player.name}
                 </span>
-                <MedalBadge medals={medals.get(player.playerId) ?? []} />
+                <MedalBadge
+                  medals={medals.get(player.playerId) ?? []}
+                  onNavigate={onNavigate}
+                />
               </div>
 
               {/* Money */}
