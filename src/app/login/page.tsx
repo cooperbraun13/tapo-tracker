@@ -11,24 +11,32 @@ const APP_URL =
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirectTo") ?? "/admin";
-  const callbackError = searchParams.get("error");
 
   const [view, setView] = useState<"login" | "forgot">("login");
+  // redirectTo is initialized to the default and updated in useEffect to avoid
+  // reading searchParams synchronously during render (which causes SSR/client mismatch).
+  const [redirectTo, setRedirectTo] = useState("/admin");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (callbackError) setError("Authentication failed. Please try again.");
-  }, [callbackError]);
-
   // Forgot password state
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMsg, setForgotMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Read all search params in useEffect to avoid SSR/client hydration mismatch.
+  // Also explicitly reset view to "login" when a callback error is present — Next.js's
+  // soft navigation can preserve "forgot" view state when redirecting back to /login.
+  useEffect(() => {
+    setRedirectTo(searchParams.get("redirectTo") ?? "/admin");
+    if (searchParams.get("error")) {
+      setView("login");
+      setError("Authentication failed. Please try again.");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
