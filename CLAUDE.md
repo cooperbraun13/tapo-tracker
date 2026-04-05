@@ -20,16 +20,16 @@ A web app for a small group of friends to track UFC Tapology pick'em results and
 
 ### Main views
 
-1. **Leaderboard** — Overall standings ranked by total money. Show rank, name, achievement medals, total money (+/- colored), event wins, and events played. The leader should feel visually distinct. Player names link to their profile page.
-2. **Event History** — Chronological list of events with each player's scores. Click an event to expand and see or edit scores. Most recent events on top. Filterable by year and promotion.
-3. **Upcoming** — A list of future cards where players vote on whether they want to bet. Votes lock once the event date passes.
-4. **Player Profiles** — Per-player stats page at `/player/[id]`. Shows earnings, event history table, earnings-over-time chart (Recharts), medals, and filters. Authenticated users see Account Settings (change name, change password) on their own profile.
-5. **Admin** — Player management (invite new players, link existing players to auth accounts, toggle admin role). Protected by Supabase Auth — only admins can access.
-6. **Analytics (v2)** — Global stats page with filters by year, promotion, and participant.
+1. **Leaderboard** (`/`) — Overall standings ranked by total money. Show rank, name, achievement medals, total money (+/- colored), event wins, and events played. The leader should feel visually distinct. Player names link to their profile page.
+2. **Event History** (`/events`) — Chronological list of events with each player's scores. Click an event to expand and see or edit scores. Most recent events on top. Filterable by year and promotion.
+3. **Upcoming** (`/upcoming`) — A list of future cards where players vote on whether they want to bet. Votes lock once the event date passes. Only the logged-in player can toggle their own vote.
+4. **Manage** (`/manage`) — Add/remove players (public, no auth required).
+5. **Player Profiles** (`/player/[id]`) — Per-player stats page. Shows earnings, event history table, earnings-over-time chart (Recharts), medals, and filters. Authenticated users see Account Settings (change name, tapology username, password) on their own profile.
+6. **Admin** (`/admin`) — Player management (invite new players, link existing players to auth accounts, toggle admin role). Protected by Supabase Auth — only admins can access.
+7. **Analytics (v2)** — Global stats page with filters by year, promotion, and participant.
 
 ### Data management
 
-- A "Manage" section to add/remove players (public, no auth required)
 - Adding an event: name the card, set a date, promotion, pool toggle, buy-in amount, and each player's Tapology points. Money is calculated automatically.
 - Editing: expand any event card to edit scores and metadata (promotion, pool, buy-in). Money recalculates automatically.
 - Deleting: remove an event entirely with two-click confirmation.
@@ -161,25 +161,26 @@ Dark, minimalist, and sharp. Think sports broadcast scoreboard meets Bloomberg t
 
 ### Animation & Motion
 
-- Framer Motion for tab transitions, leaderboard layout animations, staggered list entry
+- Framer Motion for tab transitions (AnimatePresence keyed on pathname), leaderboard layout animations, staggered list entry
 - `AnimatedNumber` component for counting money values (400ms ease-out)
 - Hover states: 150ms transitions, subtle bg lighten
 - Stagger tight: 30–50ms per item
 
 ## UX Details
 
-- **Leaderboard**: Sorted by total money. Player names are clickable links to `/player/[id]`. Medals appear inline next to names with hover tooltips. Medal clicks navigate to the relevant tab.
+- **Leaderboard**: Sorted by total money. Player names are clickable links to `/player/[id]`. Medals appear inline next to names with hover tooltips. Medal clicks navigate to the relevant route.
 - **Event cards**: Collapsed shows name + promotion badge (if not UFC) + no-pool badge + date. Expanded shows per-player scores with winner highlighted in gold. Edit mode exposes promotion selector, pool toggle, buy-in input, and points fields. Two-click delete confirmation.
 - **Event filters**: Year and promotion dropdowns appear only when >1 distinct value exists. Filters work together. "Clear" resets both.
-- **Upcoming Cards**: Votes lock once the event date passes ("Votes locked" label shown). Promote button appears for LOCKED IN past cards only. Past un-promoted cards dim to 40% opacity.
+- **Upcoming Cards**: Only the logged-in player's own vote row is interactive — other players' rows show a static indicator. Votes lock once the event date passes ("Votes locked" label shown). Promote button appears for LOCKED IN past cards only. Past un-promoted cards dim to 40% opacity.
 - **Player profiles**: Public, no auth required. Shows stats grid, earnings chart (only when >1 event), event history table. Account Settings section visible only to the authenticated owner of that profile.
-- **Admin page**: Auth-protected. Shows player list with role, auth-link status, role toggle, and invite button for unlinked players. Two invite flows: invite an existing player to claim their record, or create a new player + invite in one step.
+- **Admin page**: Auth-protected. Shows player list with role, auth-link status, role toggle, and invite button for unlinked players. Two invite flows: invite an existing player to claim their record, or create a new player + invite in one step (name set by user on setup).
+- **Nav header**: Unauthenticated users see a Login link. Authenticated users see Sign Out. Admins additionally see an Admin portal link.
 
 ### Upcoming Cards (voting tab)
 
 - Cards sorted: active upcoming first (ascending date), then past/promoted at bottom
 - Status: **LOCKED IN** (majority voted in, all voted), **NOT ENOUGH** (majority voted out, all voted), **WAITING** (not everyone has voted)
-- Votes toggle: null → in → out → null. Locked after event date passes.
+- Votes toggle: null → in → out → null. Only interactive for the logged-in player's own row. Locked after event date passes.
 - "Waiting on: [names]" shown when status is WAITING and votes are unlocked
 
 ### Player Profiles (`/player/[id]`)
@@ -190,19 +191,24 @@ Earnings-over-time chart: cumulative line chart in gold. Tooltip shows event nam
 
 Event history table: event name, promotion badge (if not UFC), date, score, money result, win indicator.
 
-Account Settings (own profile only): change display name (calls `updateOwnName` server action), change password (calls `supabase.auth.updateUser`).
+Account Settings (own profile only): change display name (`updateOwnName`), change Tapology username (`updateOwnTapologyUsername`), change password (`supabase.auth.updateUser`).
 
 ## Authentication
 
-Auth is **implemented**. Supabase Auth with invite-based registration and role-based admin protection.
+Auth is **implemented**. Supabase Auth with invite-only registration and role-based admin protection.
 
 ### How it works
 
-- Admin creates a player record (works without auth — public)
-- Admin goes to `/admin` and uses "Invite" to link an existing player record to an email, or "Invite New" to create a player + auth account in one step
-- User clicks the invite email link → redirected to `/auth/callback?code=...` → session created → redirected to `/`
-- Player can now log in via `/login` (email + password)
-- On their own profile page (`/player/[id]`), logged-in users see Account Settings to change name/password
+- **Invite existing player (claim flow)**: Admin goes to `/admin` → clicks "Invite" on an unlinked player → enters email → invite sent. The player's `auth_user_id` is pre-linked immediately. User clicks email link → `/auth/callback` → session created → `/auth/setup` where they set display name, tapology username, and password.
+- **Invite new player**: Admin clicks "+ Invite New" → enters email + role (no name) → invite sent + placeholder player record created. User clicks link → `/auth/setup` → sets their real display name, tapology username, and password.
+- After setup, players log in via `/login` (email + password).
+- On their own profile page, logged-in users see Account Settings.
+
+### Forgot password / first-time password set
+
+`/login` has a "Forgot password?" view that calls `supabase.auth.resetPasswordForEmail`. The reset link redirects to `/auth/callback?next=/auth/setup` so the user lands on the setup page and can set a new password. Works even if no password was ever set (e.g. accepted invite but didn't complete setup).
+
+**Rate limit workaround**: Supabase free tier has a low email rate limit. If hit, admins can go to Supabase dashboard → Authentication → Users → three-dot menu → "Copy recovery link" to generate a token without sending an email.
 
 ### Route protection
 
@@ -213,18 +219,19 @@ Auth is **implemented**. Supabase Auth with invite-based registration and role-b
 ### Roles
 
 - `admin` — can access `/admin`, invite players, toggle roles
-- `user` — can log in, edit own profile settings. Votes are currently public (not auth-gated yet)
+- `user` — can log in, edit own profile settings, vote on upcoming cards (own vote only)
 
 ### Public visitors (unauthenticated)
 
-Can view: leaderboard, event history, player profiles. Cannot: access admin, edit their own account settings.
+Can view: leaderboard, event history, player profiles, upcoming cards (read-only). Cannot: access admin, edit account settings, vote on upcoming cards.
 
 ### Server-side auth pattern
 
-- `src/lib/supabase.ts` — browser client using `createBrowserClient` from `@supabase/ssr`
+- `src/lib/supabase.ts` — browser client using `createBrowserClient` from `@supabase/ssr`. Stores session in cookies (required for server actions to read auth state).
 - `src/lib/supabase-server.ts` — service-role admin client (server-only). Used in Server Actions and Route Handlers. Bypasses RLS. **Never import from client components.**
-- `src/app/admin/actions.ts` — Server Actions: `invitePlayer`, `inviteNewPlayer`, `setPlayerRole`, `updateOwnName`
-- `src/app/auth/callback/route.ts` — exchanges auth code for session, sets cookies
+- `src/app/admin/actions.ts` — Server Actions: `invitePlayer`, `inviteNewPlayer`, `completeSetup`, `setPlayerRole`, `updateOwnName`, `updateOwnTapologyUsername`
+- `src/app/auth/callback/route.ts` — exchanges auth code for session, reads `?next=` param for redirect destination
+- `src/app/auth/setup/page.tsx` — post-invite setup page: name + tapology username + password
 
 ### Bootstrap
 
@@ -235,22 +242,30 @@ Can view: leaderboard, event history, player profiles. Cannot: access admin, edi
 ```
 src/
   app/
-    page.tsx                  # main app (tabs: Leaderboard, Events, Upcoming, Manage)
+    (tabs)/                   # Route group — shared layout, no URL segment added
+      layout.tsx              # Wraps tabs with Layout + AnimatePresence (keyed on pathname)
+      page.tsx                # / — Leaderboard
+      events/page.tsx         # /events — Event history
+      upcoming/page.tsx       # /upcoming — Upcoming cards voting
+      manage/page.tsx         # /manage — Player management
     layout.tsx                # HTML wrapper, metadata
     globals.css               # design tokens, font imports
-    login/page.tsx            # email+password login
+    login/page.tsx            # email+password login + forgot password flow
     admin/
       page.tsx                # player management (invite, role toggle) — admin only
-      actions.ts              # server actions: invitePlayer, inviteNewPlayer, setPlayerRole, updateOwnName
+      actions.ts              # server actions: invitePlayer, inviteNewPlayer, completeSetup,
+                              #   setPlayerRole, updateOwnName, updateOwnTapologyUsername
     api/bootstrap/route.ts    # one-time admin bootstrap endpoint
-    auth/callback/route.ts    # Supabase auth code exchange
+    auth/
+      callback/route.ts       # Supabase auth code exchange — reads ?next= for redirect
+      setup/page.tsx          # post-invite setup: name + tapology username + password
     player/[id]/page.tsx      # public player profile page
   components/
-    Layout.tsx                # tab nav with animated underline, tab transitions
+    Layout.tsx                # nav with tab links (route-based), auth buttons (Login/Admin/Sign Out)
     Leaderboard.tsx           # rankings, animated numbers, medals, player links
     EventList.tsx             # event list with filters, new event form
-    EventCard.tsx             # collapsible event card with edit mode
-    UpcomingCards.tsx         # voting tab with vote locking
+    EventCard.tsx             # collapsible event card with edit mode, defaultExpanded + highlight
+    UpcomingCards.tsx         # voting tab — currentPlayerId prop restricts interactive votes
     PlayerManager.tsx         # add/remove players
     MedalBadge.tsx            # medal emoji with tooltip and click navigation
     AnimatedNumber.tsx        # requestAnimationFrame number counting
@@ -274,7 +289,11 @@ src/
 - When editing scores, use local component state and save on explicit "Save" action — don't save on every keystroke.
 - Points inputs use `type="text"` with `inputMode="numeric"` and digit-only regex. Avoids browser spin buttons.
 - Medals are computed from `AppData` client-side. No medal data stored in DB.
-- The `proxy.ts` file is Next.js 16's replacement for `middleware.ts`. Do not create a `middleware.ts` — it will conflict.
+- The `proxy.ts` file is Next.js 16's replacement for `middleware.ts`. **Do not create a `middleware.ts`** — it will conflict and cause a build error.
+- `useSearchParams()` must be wrapped in a `<Suspense>` boundary (Next.js App Router requirement). See `events/page.tsx` and `login/page.tsx` for examples.
+- State derived from `useSearchParams()` must be set in `useEffect`, not in `useState` initializer — otherwise SSR/client HTML mismatch causes a hydration error.
+- The `(tabs)` route group folder name does NOT add a URL segment. Routes are `/`, `/events`, `/upcoming`, `/manage`.
+- Tab nav in `Layout.tsx` uses `usePathname()` to determine the active tab — no prop drilling needed.
 
 ## Supabase Setup
 
@@ -376,7 +395,7 @@ alter table players add column if not exists auth_user_id uuid unique;
 1. Enable "Email" provider in Supabase Auth settings
 2. Set Site URL and Redirect URLs in Auth settings:
    - Site URL: `https://your-app.vercel.app`
-   - Redirect URL: `https://your-app.vercel.app/auth/callback`
+   - Redirect URLs: `https://your-app.vercel.app/auth/callback`
 3. Set `NEXT_PUBLIC_APP_URL` env var to match
 
 ## What NOT to Build (Keep It Simple)
@@ -386,6 +405,7 @@ alter table players add column if not exists auth_user_id uuid unique;
 - No real-money payment processing
 - No native mobile apps
 - No complex season system — stats are rolling all-time with year filters
+- No public registration — invite-only only
 
 ## Implementation Priority
 
@@ -395,11 +415,15 @@ alter table players add column if not exists auth_user_id uuid unique;
 4. ✅ **Player profiles**: Public pages with stats, event history, earnings chart, medals
 5. ✅ **Event filtering**: Year and promotion filters on event list and profile pages
 6. ✅ **Medals**: Computed achievement badges on leaderboard and profiles with tooltips
-7. ✅ **Auth**: Supabase Auth, invite flow, admin page, proxy protection, account settings
-8. **Screenshot ingestion (v2)**: Admin upload → OCR → review → save
-9. **Discord integration (v2)**: Lock reminder and voting reminder webhooks
-10. **Analytics page (v2)**: Global stats with filters
-11. **Self-service voting (v2)**: Auth-gated votes — players can only toggle their own vote
+7. ✅ **Auth**: Supabase Auth, invite-only flow, setup page, admin page, proxy protection, account settings
+8. ✅ **Route-based tabs**: Each tab is its own URL path for browser history navigation
+9. ✅ **Auth-aware nav**: Login/Admin/Sign Out buttons in header
+10. ✅ **Vote restriction**: Only logged-in player can toggle their own vote
+11. ✅ **Tapology username**: Collected on invite setup, editable on own profile
+12. ✅ **Forgot password**: Reset flow on /login, redirects to /auth/setup
+13. **Screenshot ingestion (v2)**: Admin upload → OCR → review → save
+14. **Discord integration (v2)**: Lock reminder and voting reminder webhooks
+15. **Analytics page (v2)**: Global stats with filters
 
 ## Commands
 
@@ -430,9 +454,17 @@ When verifying the build works:
 17. Hover a medal on the leaderboard — confirm tooltip appears with label and description
 18. Navigate to `/admin` without being logged in — confirm redirect to `/login`
 19. Log in as admin — confirm redirect to `/admin`
-20. Invite a player from admin page — confirm invite email sent and player shows "Linked" after accepting
-21. Log in as invited player, visit own profile — confirm Account Settings section visible
-22. Visit another player's profile while logged in — confirm Account Settings NOT shown
+20. Invite an existing player from admin page — confirm invite email sent, player shows "Linked" after accepting, they land on `/auth/setup`
+21. Use "+ Invite New" — confirm no name field, invite sent, new player record created, user sets name on `/auth/setup`
+22. Log in as invited player, visit own profile — confirm Account Settings section visible with name, tapology username, and password fields
+23. Visit another player's profile while logged in — confirm Account Settings NOT shown
+24. Log out — confirm Login button appears in nav; Sign Out and Admin links disappear
+25. Log in as admin — confirm Admin link appears in nav
+26. Navigate between tabs — confirm browser back/forward moves between routes, not within-page state
+27. Click a medal on the leaderboard — confirm navigation to the relevant event/tab
+28. Use "Forgot password?" on `/login` — confirm reset email sent, clicking link lands on `/auth/setup`, password can be set
+29. Visit `/upcoming` without being logged in — confirm all vote indicators are static (non-interactive)
+30. Log in, visit `/upcoming` — confirm only your own vote row is interactive
 
 ## Confirmed Decisions
 
@@ -443,3 +475,6 @@ When verifying the build works:
 5. **No-pool events and stats**: Count toward all stats and medals EXCEPT money totals.
 6. **Discord mapping**: Users can edit their own Discord mapping from their profile. Admin can edit for any player.
 7. **Auth is additive**: Core app works fully without auth. Auth adds protection for admin routes and self-service account settings.
+8. **Invite-only registration**: No public sign-up. All accounts created by admin invite.
+9. **Tapology username is self-reported**: Players set their own tapology username during setup or from their profile. No validation against the Tapology site.
+10. **Vote restriction**: Votes are auth-gated at the UI level — only the logged-in player can toggle their own row. No backend enforcement (RLS is "allow all").
