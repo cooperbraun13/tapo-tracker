@@ -18,10 +18,12 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(
-    callbackError ? "Authentication failed. Please try again." : null
-  );
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (callbackError) setError("Authentication failed. Please try again.");
+  }, [callbackError]);
 
   // Forgot password state
   const [forgotEmail, setForgotEmail] = useState("");
