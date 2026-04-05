@@ -13,6 +13,8 @@ interface UpcomingCardsProps {
   onVote: (cardId: string, playerId: string, vote: "in" | "out" | null) => void;
   onPromote: (cardId: string) => void;
   onDelete: (cardId: string) => void;
+  /** Auth'd player's ID — only this player's row shows interactive vote button */
+  currentPlayerId?: string;
 }
 
 type Status = "LOCKED IN" | "NOT ENOUGH" | "WAITING";
@@ -48,6 +50,7 @@ export default function UpcomingCards({
   onVote,
   onPromote,
   onDelete,
+  currentPlayerId,
 }: UpcomingCardsProps) {
   const [adding, setAdding] = useState(false);
   const [cardName, setCardName] = useState("");
@@ -225,39 +228,55 @@ export default function UpcomingCards({
                         Votes locked
                       </p>
                     )}
-                    {card.votes.map((v) => (
-                      <div
-                        key={v.playerId}
-                        className={`flex items-center justify-between py-1.5 px-2 ${
-                          v.vote === "in"
-                            ? "bg-green/10"
-                            : v.vote === "out"
-                            ? "bg-red/10"
-                            : ""
-                        }`}
-                      >
-                        <span className="font-body">{playerName(v.playerId)}</span>
-                        <button
-                          onClick={() => {
-                            if (!votesLocked) {
-                              onVote(card.id, v.playerId, cycleVote(v.vote));
-                            }
-                          }}
-                          disabled={votesLocked}
-                          className={`w-8 h-8 flex items-center justify-center font-heading font-bold text-sm transition-colors duration-150 ${
-                            votesLocked
-                              ? "cursor-default opacity-60"
-                              : v.vote === "in"
-                              ? "text-green hover:text-green/70 cursor-pointer"
+                    {card.votes.map((v) => {
+                      const isOwnRow =
+                        currentPlayerId !== undefined &&
+                        v.playerId === currentPlayerId;
+                      const canClick = isOwnRow && !votesLocked;
+
+                      return (
+                        <div
+                          key={v.playerId}
+                          className={`flex items-center justify-between py-1.5 px-2 ${
+                            v.vote === "in"
+                              ? "bg-green/10"
                               : v.vote === "out"
-                              ? "text-red hover:text-red/70 cursor-pointer"
-                              : "text-text-muted hover:text-text cursor-pointer"
+                              ? "bg-red/10"
+                              : ""
                           }`}
                         >
-                          {v.vote === "in" ? "✓" : v.vote === "out" ? "✗" : "—"}
-                        </button>
-                      </div>
-                    ))}
+                          <span className="font-body">{playerName(v.playerId)}</span>
+                          {canClick ? (
+                            <button
+                              onClick={() =>
+                                onVote(card.id, v.playerId, cycleVote(v.vote))
+                              }
+                              className={`w-8 h-8 flex items-center justify-center font-heading font-bold text-sm transition-colors duration-150 cursor-pointer ${
+                                v.vote === "in"
+                                  ? "text-green hover:text-green/70"
+                                  : v.vote === "out"
+                                  ? "text-red hover:text-red/70"
+                                  : "text-text-muted hover:text-text"
+                              }`}
+                            >
+                              {v.vote === "in" ? "✓" : v.vote === "out" ? "✗" : "—"}
+                            </button>
+                          ) : (
+                            <span
+                              className={`w-8 h-8 flex items-center justify-center font-heading font-bold text-sm opacity-60 ${
+                                v.vote === "in"
+                                  ? "text-green"
+                                  : v.vote === "out"
+                                  ? "text-red"
+                                  : "text-text-muted"
+                              }`}
+                            >
+                              {v.vote === "in" ? "✓" : v.vote === "out" ? "✗" : "—"}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
 
                     {/* Waiting indicator */}
                     {status === "WAITING" && !votesLocked && (

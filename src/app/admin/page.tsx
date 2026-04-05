@@ -129,7 +129,6 @@ function InviteClaimModal({
 // ─── Invite-new-player modal ──────────────────────────────────────────────────
 
 function InviteNewModal({ onClose }: { onClose: () => void }) {
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "user">("user");
   const [loading, setLoading] = useState(false);
@@ -138,12 +137,12 @@ function InviteNewModal({ onClose }: { onClose: () => void }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await inviteNewPlayer(name, email, role);
+    const { error } = await inviteNewPlayer(email, role);
     setLoading(false);
     setResult(
       error
         ? { ok: false, msg: error }
-        : { ok: true, msg: `${name} created and invite sent to ${email}` }
+        : { ok: true, msg: `Invite sent to ${email}. They'll set their display name on signup.` }
     );
   }
 
@@ -159,7 +158,7 @@ function InviteNewModal({ onClose }: { onClose: () => void }) {
               Invite New Player
             </h2>
             <p className="text-text-muted text-xs font-body mt-0.5">
-              Create a player record and send an invite.
+              Send an invite link. They'll set their name on signup.
             </p>
           </div>
           <button onClick={onClose} className="text-text-muted hover:text-text text-lg leading-none">✕</button>
@@ -171,20 +170,6 @@ function InviteNewModal({ onClose }: { onClose: () => void }) {
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-1">
               <label className="block text-text-muted text-xs font-heading uppercase tracking-widest">
-                Display Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                autoFocus
-                placeholder="e.g. Alex"
-                className="w-full bg-bg border border-border px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-gold transition-colors duration-150"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="block text-text-muted text-xs font-heading uppercase tracking-widest">
                 Email
               </label>
               <input
@@ -192,6 +177,7 @@ function InviteNewModal({ onClose }: { onClose: () => void }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoFocus
                 placeholder="player@example.com"
                 className="w-full bg-bg border border-border px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-gold transition-colors duration-150"
               />
@@ -212,10 +198,10 @@ function InviteNewModal({ onClose }: { onClose: () => void }) {
             <div className="flex gap-2 pt-1">
               <button
                 type="submit"
-                disabled={loading || !name.trim() || !email}
+                disabled={loading || !email}
                 className="flex-1 px-4 py-2 bg-gold/10 border border-gold/30 text-gold font-heading font-semibold uppercase text-xs tracking-wider hover:bg-gold/20 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {loading ? "Creating…" : "Create & Invite"}
+                {loading ? "Sending…" : "Send Invite"}
               </button>
               <button
                 type="button"

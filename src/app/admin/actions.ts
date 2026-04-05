@@ -48,6 +48,7 @@ async function callerIsAdmin(): Promise<boolean> {
 /**
  * Send an invite email to an existing player so they can link their account.
  * The resulting auth user id is stored on the player record immediately.
+ * The invite redirects to /auth/setup where the user sets their password.
  */
 export async function invitePlayer(
   playerId: string,
@@ -57,7 +58,7 @@ export async function invitePlayer(
 
   const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
     email,
-    { redirectTo: `${APP_URL}/auth/callback?next=/` }
+    { redirectTo: `${APP_URL}/auth/callback?next=/auth/setup` }
   );
 
   if (error) return { error: error.message };
@@ -78,11 +79,11 @@ export async function invitePlayer(
 // ─── Invite new player (create flow) ─────────────────────────────────────────
 
 /**
- * Create a brand-new player record AND send them an invite email.
- * Used when inviting someone who doesn't yet have a player record.
+ * Send an invite to a brand-new player. Creates a placeholder player record
+ * linked to the new auth user. The user sets their display name and tapology
+ * username on the /auth/setup page.
  */
 export async function inviteNewPlayer(
-  name: string,
   email: string,
   role: "admin" | "user"
 ): Promise<{ error: string | null }> {
@@ -91,14 +92,15 @@ export async function inviteNewPlayer(
   // Send the invite — creates an auth user immediately
   const { data, error: inviteError } =
     await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${APP_URL}/auth/callback?next=/`,
+      redirectTo: `${APP_URL}/auth/callback?next=/auth/setup`,
     });
 
   if (inviteError) return { error: inviteError.message };
 
-  // Create the player record linked to the new auth user
+  // Create a placeholder player record (user will set their real name on setup)
+  const placeholderName = email.split("@")[0];
   const { error: insertError } = await supabaseAdmin.from("players").insert({
-    name: name.trim(),
+    name: placeholderName,
     role,
     auth_user_id: data.user?.id ?? null,
   });
@@ -106,6 +108,47 @@ export async function inviteNewPlayer(
   if (insertError) return { error: insertError.message };
 
   return { error: null };
+}
+
+// ─── Setup completion (used by /auth/setup page) ──────────────────────────────
+
+/**
+ * Called after a new/claiming user clicks their invite link and sets up their
+ * account. Verifies the caller owns the player record before updating.
+ */
+export async function completeSetup(
+  playerId: string,
+  updates: { name: string; tapologyUsername?: string }
+): Promise<{ error: string | null }> {
+  const callerId = await getCallerId();
+  if (!callerId) return { error: "Not authenticated" };
+
+  // Verify ownership
+  const { data: player } = await supabaseAdmin
+    .from("players")
+    .select("auth_user_id")
+    .eq("id", playerId)
+    .maybeSingle();
+
+  if (!player || player.auth_user_id !== callerId) {
+    return { error: "Unauthorized" };
+  }
+
+  const row: Record<string, unknown> = {};
+  const trimmedName = updates.name.trim();
+  if (trimmedName) row.name = trimmedName;
+  if (updates.tapologyUsername !== undefined) {
+    row.tapology_username = updates.tapologyUsername.trim() || null;
+  }
+
+  if (Object.keys(row).length === 0) return { error: null };
+
+  const { error } = await supabaseAdmin
+    .from("players")
+    .update(row)
+    .eq("id", playerId);
+
+  return { error: error?.message ?? null };
 }
 
 // ─── Role management ──────────────────────────────────────────────────────────
@@ -125,7 +168,7 @@ export async function setPlayerRole(
   return { error: error?.message ?? null };
 }
 
-// ─── Self-service name update ─────────────────────────────────────────────────
+// ─── Self-service profile updates ─────────────────────────────────────────────
 
 /**
  * Let an authenticated user update their own display name.
@@ -138,7 +181,6 @@ export async function updateOwnName(
   const callerId = await getCallerId();
   if (!callerId) return { error: "Not authenticated" };
 
-  // Verify ownership
   const { data: player } = await supabaseAdmin
     .from("players")
     .select("auth_user_id")
@@ -155,6 +197,35 @@ export async function updateOwnName(
   const { error } = await supabaseAdmin
     .from("players")
     .update({ name: trimmed })
+    .eq("id", playerId);
+
+  return { error: error?.message ?? null };
+}
+
+/**
+ * Let an authenticated user update their own Tapology username.
+ * Verifies that the caller owns the target player record.
+ */
+export async function updateOwnTapologyUsername(
+  playerId: string,
+  tapologyUsername: string
+): Promise<{ error: string | null }> {
+  const callerId = await getCallerId();
+  if (!callerId) return { error: "Not authenticated" };
+
+  const { data: player } = await supabaseAdmin
+    .from("players")
+    .select("auth_user_id")
+    .eq("id", playerId)
+    .maybeSingle();
+
+  if (!player || player.auth_user_id !== callerId) {
+    return { error: "Unauthorized" };
+  }
+
+  const { error } = await supabaseAdmin
+    .from("players")
+    .update({ tapology_username: tapologyUsername.trim() || null })
     .eq("id", playerId);
 
   return { error: error?.message ?? null };

@@ -20,7 +20,7 @@ import { calculateMoney } from "@/lib/scoring";
 import { computeMedals } from "@/lib/medals";
 import MedalBadge from "@/components/MedalBadge";
 import { supabase } from "@/lib/supabase";
-import { updateOwnName } from "@/app/admin/actions";
+import { updateOwnName, updateOwnTapologyUsername } from "@/app/admin/actions";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -248,15 +248,23 @@ function ChartTooltip({
 function AccountSettings({
   playerId,
   currentName,
+  currentTapologyUsername,
   onNameSaved,
+  onTapologySaved,
 }: {
   playerId: string;
   currentName: string;
+  currentTapologyUsername: string;
   onNameSaved: (newName: string) => void;
+  onTapologySaved: (username: string) => void;
 }) {
   const [name, setName] = useState(currentName);
   const [nameSaving, setNameSaving] = useState(false);
   const [nameMsg, setNameMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const [tapologyUsername, setTapologyUsername] = useState(currentTapologyUsername);
+  const [tapSaving, setTapSaving] = useState(false);
+  const [tapMsg, setTapMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -275,6 +283,21 @@ function AccountSettings({
     } else {
       setNameMsg({ ok: true, text: "Name updated." });
       onNameSaved(name.trim());
+    }
+  }
+
+  async function handleTapologySave(e: React.FormEvent) {
+    e.preventDefault();
+    if (tapologyUsername.trim() === currentTapologyUsername) return;
+    setTapSaving(true);
+    setTapMsg(null);
+    const { error } = await updateOwnTapologyUsername(playerId, tapologyUsername);
+    setTapSaving(false);
+    if (error) {
+      setTapMsg({ ok: false, text: error });
+    } else {
+      setTapMsg({ ok: true, text: "Tapology username updated." });
+      onTapologySaved(tapologyUsername.trim());
     }
   }
 
@@ -335,6 +358,35 @@ function AccountSettings({
         {nameMsg && (
           <p className={`text-xs font-body ${nameMsg.ok ? "text-green" : "text-red"}`}>
             {nameMsg.text}
+          </p>
+        )}
+      </form>
+
+      <div className="border-t border-border" />
+
+      {/* Tapology username */}
+      <form onSubmit={handleTapologySave} className="space-y-2">
+        <label className={labelCls}>Tapology Username</label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={tapologyUsername}
+            onChange={(e) => setTapologyUsername(e.target.value)}
+            className={`${inputCls} flex-1`}
+            placeholder="e.g. mma_fan99 (optional)"
+            maxLength={80}
+          />
+          <button
+            type="submit"
+            disabled={tapSaving || tapologyUsername.trim() === currentTapologyUsername}
+            className="px-4 py-2 bg-gold/10 border border-gold/30 text-gold font-heading font-semibold uppercase text-xs tracking-wider hover:bg-gold/20 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          >
+            {tapSaving ? "Saving…" : "Save"}
+          </button>
+        </div>
+        {tapMsg && (
+          <p className={`text-xs font-body ${tapMsg.ok ? "text-green" : "text-red"}`}>
+            {tapMsg.text}
           </p>
         )}
       </form>
@@ -805,7 +857,9 @@ export default function PlayerProfilePage() {
           <AccountSettings
             playerId={player.id}
             currentName={player.name}
+            currentTapologyUsername={player.tapologyUsername ?? ""}
             onNameSaved={() => refreshPlayers()}
+            onTapologySaved={() => refreshPlayers()}
           />
         )}
       </main>
