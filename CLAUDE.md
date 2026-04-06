@@ -208,7 +208,7 @@ Auth is **implemented**. Supabase Auth with invite-only registration and role-ba
 
 `/login` has a "Forgot password?" view that calls `supabase.auth.resetPasswordForEmail`. The reset link redirects to `/auth/callback?next=/auth/setup` so the user lands on the setup page and can set a new password. Works even if no password was ever set (e.g. accepted invite but didn't complete setup).
 
-**Rate limit workaround**: Supabase free tier has a low email rate limit. If hit, admins can go to Supabase dashboard → Authentication → Users → three-dot menu → "Copy recovery link" to generate a token without sending an email.
+**Rate limit workaround**: Supabase free tier has a low email rate limit. If hit, admins can go to Supabase dashboard → Authentication → Users → three-dot menu → "Copy recovery link" to generate a token without sending an email. These links use the OTP `token_hash` flow (not PKCE), which the callback route handles.
 
 ### Route protection
 
@@ -230,7 +230,7 @@ Can view: leaderboard, event history, player profiles, upcoming cards (read-only
 - `src/lib/supabase.ts` — browser client using `createBrowserClient` from `@supabase/ssr`. Stores session in cookies (required for server actions to read auth state).
 - `src/lib/supabase-server.ts` — service-role admin client (server-only). Used in Server Actions and Route Handlers. Bypasses RLS. **Never import from client components.**
 - `src/app/admin/actions.ts` — Server Actions: `invitePlayer`, `inviteNewPlayer`, `completeSetup`, `setPlayerRole`, `updateOwnName`, `updateOwnTapologyUsername`
-- `src/app/auth/callback/route.ts` — exchanges auth code for session, reads `?next=` param for redirect destination
+- `src/app/auth/callback/route.ts` — handles two Supabase auth flows: PKCE (`?code=`) via `exchangeCodeForSession` and OTP (`?token_hash=&type=`) via `verifyOtp`. Reads `?next=` param for redirect destination.
 - `src/app/auth/setup/page.tsx` — post-invite setup page: name + tapology username + password
 
 ### Bootstrap
@@ -291,7 +291,7 @@ src/
 - Medals are computed from `AppData` client-side. No medal data stored in DB.
 - The `proxy.ts` file is Next.js 16's replacement for `middleware.ts`. **Do not create a `middleware.ts`** — it will conflict and cause a build error.
 - `useSearchParams()` must be wrapped in a `<Suspense>` boundary (Next.js App Router requirement). See `events/page.tsx` and `login/page.tsx` for examples.
-- State derived from `useSearchParams()` must be set in `useEffect`, not in `useState` initializer — otherwise SSR/client HTML mismatch causes a hydration error.
+- State derived from `useSearchParams()` must be set in `useEffect`, not in `useState` initializer — otherwise SSR/client HTML mismatch causes a hydration error. Additionally, if Next.js's soft navigation preserves a mounted component (e.g. user navigates back to `/login` after visiting "forgot" view), the view state may not reset. Explicitly reset `view` state inside the `useEffect` that reads the error param — see `login/page.tsx`.
 - The `(tabs)` route group folder name does NOT add a URL segment. Routes are `/`, `/events`, `/upcoming`, `/manage`.
 - Tab nav in `Layout.tsx` uses `usePathname()` to determine the active tab — no prop drilling needed.
 
