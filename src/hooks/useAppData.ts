@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { AppData, EventScore, Player } from "@/lib/types";
 import * as storage from "@/lib/storage";
-import { addUpcomingCardAction } from "@/app/(tabs)/upcoming/actions";
 
 const EMPTY: AppData = { players: [], events: [], upcoming: [] };
 
@@ -128,7 +127,7 @@ export function useAppData() {
   const addUpcomingCard = useCallback(
     async (name: string, date: string, promotion?: string) => {
       const playerIds = data.players.map((p) => p.id);
-      const card = await addUpcomingCardAction(name, promotion ?? "UFC", date, playerIds);
+      const card = await storage.addUpcomingCard(name, promotion ?? "UFC", date, playerIds);
       setData((prev) => ({ ...prev, upcoming: [...prev.upcoming, card] }));
     },
     [data.players]
