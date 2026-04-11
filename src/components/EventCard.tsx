@@ -167,6 +167,7 @@ export default function EventCard({
           {editing && (
             <div className="flex gap-2 items-center flex-wrap pb-1">
               <select
+                id={`edit-promotion-${event.id}`}
                 value={editPromotion}
                 onChange={(e) => setEditPromotion(e.target.value)}
                 className="bg-bg border border-border px-2 py-1.5 text-sm text-text focus:outline-none focus:border-gold transition-colors duration-150"
@@ -191,6 +192,7 @@ export default function EventCard({
                 <div className="flex items-center gap-1">
                   <span className="text-text-muted text-xs">$</span>
                   <input
+                    id={`edit-buy-in-${event.id}`}
                     type="text"
                     inputMode="numeric"
                     value={editBuyIn}
@@ -226,6 +228,7 @@ export default function EventCard({
                   <div className="flex items-center gap-4">
                     {editing ? (
                       <input
+                        id={`edit-score-${event.id}-${s.playerId}`}
                         type="text"
                         inputMode="numeric"
                         value={s.points || ""}

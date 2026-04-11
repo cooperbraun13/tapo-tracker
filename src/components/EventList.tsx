@@ -138,6 +138,7 @@ export default function EventList({
         <div className="flex gap-2 items-center flex-wrap">
           {availableYears.length > 1 && (
             <select
+              id="event-year-filter"
               value={yearFilter}
               onChange={(e) => setYearFilter(e.target.value)}
               className="bg-surface border border-border px-3 py-1.5 text-sm text-text focus:outline-none focus:border-gold transition-colors duration-150"
@@ -150,6 +151,7 @@ export default function EventList({
           )}
           {availablePromos.length > 1 && (
             <select
+              id="event-promo-filter"
               value={promoFilter}
               onChange={(e) => setPromoFilter(e.target.value)}
               className="bg-surface border border-border px-3 py-1.5 text-sm text-text focus:outline-none focus:border-gold transition-colors duration-150"
@@ -183,6 +185,7 @@ export default function EventList({
           >
             <div className="flex gap-2">
               <input
+                id="new-event-name"
                 type="text"
                 value={eventName}
                 onChange={(e) => setEventName(e.target.value)}
@@ -190,6 +193,7 @@ export default function EventList({
                 className="flex-1 bg-bg border border-border px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-gold transition-colors duration-150"
               />
               <input
+                id="new-event-date"
                 type="date"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
@@ -198,6 +202,7 @@ export default function EventList({
             </div>
             <div className="flex gap-2 items-center flex-wrap">
               <select
+                id="new-event-promotion"
                 value={promotion}
                 onChange={(e) => setPromotion(e.target.value)}
                 className="bg-bg border border-border px-3 py-2 text-text focus:outline-none focus:border-gold transition-colors duration-150"
@@ -222,6 +227,7 @@ export default function EventList({
                 <div className="flex items-center gap-1">
                   <span className="text-text-muted text-sm">$</span>
                   <input
+                    id="new-event-buy-in"
                     type="text"
                     inputMode="numeric"
                     value={buyIn}
@@ -247,6 +253,7 @@ export default function EventList({
                 >
                   <span className="font-body">{p.name}</span>
                   <input
+                    id={`new-event-score-${p.id}`}
                     type="text"
                     inputMode="numeric"
                     value={scores[p.id] ?? ""}

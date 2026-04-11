@@ -116,6 +116,7 @@ export default function UpcomingCards({
           >
             <div className="flex gap-2 flex-wrap">
               <input
+                id="new-card-name"
                 type="text"
                 value={cardName}
                 onChange={(e) => setCardName(e.target.value)}
@@ -123,6 +124,7 @@ export default function UpcomingCards({
                 className="flex-1 min-w-40 bg-bg border border-border px-3 py-2 text-text placeholder:text-text-muted focus:outline-none focus:border-gold transition-colors duration-150"
               />
               <input
+                id="new-card-date"
                 type="date"
                 value={cardDate}
                 onChange={(e) => setCardDate(e.target.value)}
@@ -131,6 +133,7 @@ export default function UpcomingCards({
             </div>
             <div>
               <select
+                id="new-card-promotion"
                 value={promotion}
                 onChange={(e) => setPromotion(e.target.value)}
                 className="bg-bg border border-border px-3 py-2 text-text focus:outline-none focus:border-gold transition-colors duration-150"
