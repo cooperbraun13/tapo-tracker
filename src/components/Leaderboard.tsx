@@ -86,7 +86,7 @@ export default function Leaderboard({ data, onNavigate }: LeaderboardProps) {
               <div className="flex-1 flex items-center min-w-0">
                 <Link
                   href={`/player/${player.playerId}`}
-                  className={`font-heading font-bold text-base uppercase tracking-wide truncate underline-offset-2 hover:underline decoration-gold/40 transition-colors duration-150 ${
+                  className={`font-heading font-bold text-base lowercase tracking-wide truncate underline-offset-2 hover:underline decoration-gold/40 transition-colors duration-150 ${
                     isFirst ? "text-gold" : "hover:text-gold/80"
                   }`}
                 >
